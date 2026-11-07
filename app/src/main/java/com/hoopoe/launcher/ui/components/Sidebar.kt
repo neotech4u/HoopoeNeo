@@ -128,13 +128,49 @@ fun Sidebar(
 
     val navButtons: @Composable () -> Unit = {
         NavButton(
-            icon         = Icons.Default.LocalGasStation,
-            label        = "Fuel",
-            isActive     = false,
+            icon         = Icons.Default.Speed,
+            label        = "Cockpit",
+            isActive     = currentDest == NavDestination.HOME,
             accent       = accent,
             iconInactive = iconInactive,
             isHorizontal = isHorizontal,
-            onClick      = { onOpenRefuel() }
+            onClick      = { onNavigate(NavDestination.HOME) }
+        )
+        NavButton(
+            icon         = Icons.Default.Navigation,
+            label        = "Navi",
+            isActive     = currentDest == NavDestination.NAVIGATION_CENTRE,
+            accent       = accent,
+            iconInactive = iconInactive,
+            isHorizontal = isHorizontal,
+            onClick      = { onNavigate(NavDestination.NAVIGATION_CENTRE) }
+        )
+        NavButton(
+            icon         = Icons.Default.MusicNote,
+            label        = "Media",
+            isActive     = currentDest == NavDestination.MEDIA_CENTRE,
+            accent       = accent,
+            iconInactive = iconInactive,
+            isHorizontal = isHorizontal,
+            onClick      = { onNavigate(NavDestination.MEDIA_CENTRE) }
+        )
+        NavButton(
+            icon         = Icons.Default.Mosque,
+            label        = "Islamic",
+            isActive     = currentDest == NavDestination.ISLAMIC_COMPANION,
+            accent       = accent,
+            iconInactive = iconInactive,
+            isHorizontal = isHorizontal,
+            onClick      = { onNavigate(NavDestination.ISLAMIC_COMPANION) }
+        )
+        NavButton(
+            icon         = Icons.Default.DirectionsCar,
+            label        = "Vehicle",
+            isActive     = currentDest == NavDestination.VEHICLE_INFO || currentDest == NavDestination.OBD_DIAGNOSTICS || currentDest == NavDestination.TPMS_DASHBOARD,
+            accent       = accent,
+            iconInactive = iconInactive,
+            isHorizontal = isHorizontal,
+            onClick      = { onNavigate(NavDestination.VEHICLE_INFO) }
         )
         NavButton(
             icon         = Icons.Default.Apps,
@@ -146,22 +182,13 @@ fun Sidebar(
             onClick      = { onNavigate(NavDestination.APP_LIBRARY) }
         )
         NavButton(
-            icon         = Icons.Default.Settings,
-            label        = "Settings",
-            isActive     = currentDest == NavDestination.SETTINGS,
+            icon         = Icons.Default.Tune,
+            label        = "Controls",
+            isActive     = currentDest == NavDestination.QUICK_CONTROLS || currentDest == NavDestination.SETTINGS,
             accent       = accent,
             iconInactive = iconInactive,
             isHorizontal = isHorizontal,
-            onClick      = { onNavigate(NavDestination.SETTINGS) }
-        )
-        NavButton(
-            icon         = Icons.Default.Home,
-            label        = "Home",
-            isActive     = currentDest == NavDestination.HOME,
-            accent       = accent,
-            iconInactive = iconInactive,
-            isHorizontal = isHorizontal,
-            onClick      = { onNavigate(NavDestination.HOME) }
+            onClick      = { onNavigate(NavDestination.QUICK_CONTROLS) }
         )
     }
 
@@ -566,5 +593,9 @@ fun DefaultShortcutIcon.toIcon(): ImageVector = when (this) {
     DefaultShortcutIcon.FAVORITE    -> Icons.Default.Favorite
     // Web / location
     DefaultShortcutIcon.GLOBE       -> Icons.Default.Language
+    // Islamic & Diagnostics
+    DefaultShortcutIcon.MOSQUE      -> Icons.Default.Mosque
+    DefaultShortcutIcon.DIAGNOSTICS -> Icons.Default.Troubleshoot
+    DefaultShortcutIcon.TPMS        -> Icons.Default.TireRepair
     DefaultShortcutIcon.NONE        -> Icons.Default.Apps
 }

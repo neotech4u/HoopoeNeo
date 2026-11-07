@@ -28,13 +28,46 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
+import android.speech.tts.TextToSpeech
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.VolumeOff
+import java.util.Locale
+
 @Composable
 fun TravelDuaScreen(
     accent: Color,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var hasRead by remember { mutableStateOf(false) }
+    var isPlayingAudio by remember { mutableStateOf(false) }
+    var ttsInstance by remember { mutableStateOf<TextToSpeech?>(null) }
+
+    DisposableEffect(Unit) {
+        val tts = TextToSpeech(context.applicationContext) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                // Initialize TTS
+            }
+        }
+        ttsInstance = tts
+        onDispose {
+            tts.stop()
+            tts.shutdown()
+        }
+    }
+
+    fun toggleAudio() {
+        if (isPlayingAudio) {
+            ttsInstance?.stop()
+            isPlayingAudio = false
+        } else {
+            isPlayingAudio = true
+            val duaArabic = "Allahu Akbar, Allahu Akbar, Allahu Akbar. Subhanallazi sakh-khara lana haza wa ma kunna lahu muqrinin, wa inna ila Rabbina lamun-qaliboon. Allahumma inna nas-aluka fee safarina haza al-birra wat-taqwa."
+            ttsInstance?.speak(duaArabic, TextToSpeech.QUEUE_FLUSH, null, "dua_audio")
+        }
+    }
 
     // When driver clicks "I Have Read", show "Fi Amanillah • Happy Journey" then dismiss smoothly
     LaunchedEffect(hasRead) {
@@ -155,20 +188,41 @@ fun TravelDuaScreen(
                             )
                         }
 
-                        // Quick skip button
-                        IconButton(
-                            onClick = onDismiss,
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.08f))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Skip",
-                                tint = Color(0xFF94A3B8),
-                                modifier = Modifier.size(18.dp)
-                            )
+                            // Audio recitation toggle
+                            IconButton(
+                                onClick = { toggleAudio() },
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isPlayingAudio) Color(0xFF00E676).copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f))
+                            ) {
+                                Icon(
+                                    imageVector = if (isPlayingAudio) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                                    contentDescription = "Audio Recitation",
+                                    tint = if (isPlayingAudio) Color(0xFF00E676) else Color(0xFF94A3B8),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            // Quick skip button
+                            IconButton(
+                                onClick = onDismiss,
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.08f))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Skip",
+                                    tint = Color(0xFF94A3B8),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
 

@@ -10,6 +10,36 @@ enum class DayNightMode { DARK, LIGHT, AUTO, SYSTEM }
 enum class SidebarPosition { LEFT, RIGHT, BOTTOM }
 enum class GradientDirection { TOP_TO_BOTTOM, LEFT_TO_RIGHT, DIAGONAL, RADIAL }
 
+/** 3 Distinct Automotive Dashboard Layouts */
+enum class DashboardLayoutPreset {
+    THREE_ZONE_HUD,    // Zone 1: Speedometer, Zone 2: Navigation Map, Zone 3: Media & Fuel Hub
+    MINIMAL_DASHBOARD, // High-readability large speed, minimal clock, weather, next prayer, media
+    COCKPIT_QUAD       // 4 balanced instruments: Speedometer, Osmdroid Map, Media Player, Diagnostics
+}
+
+/** 4 Master Automotive Color & Design Themes */
+enum class ThemePreset {
+    DARK_AUTOMOTIVE,      // Deep Obsidian #07090E, Neon Cyan #00E5FF
+    BLACK_CHAMPAGNE_GOLD, // Piano Black #050505, Champagne Gold #D4AF37
+    GRAPHITE_TECH,        // Dark Anthracite #121417, Titanium Silver #E0E6ED & Ice Blue #64B5F6
+    MINIMAL_DASHBOARD     // Zero-Light Black #000000, Warm White / Muted Amber #FF9100
+}
+
+/** Recognized Islamic Prayer Calculation Conventions */
+enum class PrayerCalcMethod(val displayName: String) {
+    MUSLIM_WORLD_LEAGUE("Muslim World League (MWL)"),
+    ISNA("Islamic Society of North America (ISNA)"),
+    EGYPT("Egyptian General Authority"),
+    MAKKAH("Umm al-Qura University, Makkah"),
+    KARACHI("University of Islamic Sciences, Karachi")
+}
+
+/** Juristic Asr Calculation Method */
+enum class AsrCalcMethod(val displayName: String) {
+    SHAFI("Shafi'i, Maliki, Hanbali (Standard)"),
+    HANAFI("Hanafi (Later Asr)")
+}
+
 enum class DefaultShortcutIcon {
     NONE,
     // Navigation & vehicle
@@ -23,7 +53,9 @@ enum class DefaultShortcutIcon {
     // General utility
     TV, VIDEOCAM, STAR, MESSAGE, TIMER, LOCK, SETTINGS, FAVORITE,
     // Web / location
-    GLOBE
+    GLOBE,
+    // Islamic & Diagnostics
+    MOSQUE, DIAGNOSTICS, TPMS
 }
 
 data class SoundPadConfig(
@@ -54,7 +86,7 @@ const val GRID_COLS = 3
 const val GRID_ROWS = 2
 
 data class WidgetConfig(
-    val id: String,          // "CLOCK" | "WEATHER" | "TELEMETRY" | "NOW_PLAYING" | "SPEEDOMETER"
+    val id: String,          // "CLOCK" | "WEATHER" | "TELEMETRY" | "NOW_PLAYING" | "SPEEDOMETER" | "PRAYER"
     val gridX: Int,          // column 0..(GRID_COLS-1)
     val gridY: Int,          // row    0..(GRID_ROWS-1)
     val spanX: Int = 1,
@@ -108,7 +140,21 @@ data class AppSettings(
     val gradientDirection: GradientDirection = GradientDirection.DIAGONAL,
     val useCustomBackgroundColor: Boolean = false,
     val playLogonAnimation: Boolean = true,
-    val showTravelDua: Boolean = true
+    val showTravelDua: Boolean = true,
+
+    // Standalone & Automotive Companion Extensions
+    val autoLaunchOnBoot: Boolean = false,
+    val dashboardLayout: DashboardLayoutPreset = DashboardLayoutPreset.THREE_ZONE_HUD,
+    val activeTheme: ThemePreset = ThemePreset.DARK_AUTOMOTIVE,
+    val prayerCalculationMethod: PrayerCalcMethod = PrayerCalcMethod.MUSLIM_WORLD_LEAGUE,
+    val asrMethod: AsrCalcMethod = AsrCalcMethod.SHAFI,
+    val prayerAlertsEnabled: Boolean = true,
+    val showPrayerWidget: Boolean = true,
+    val overspeedWarningEnabled: Boolean = true,
+    val overspeedThresholdKmh: Float = 80f,
+    val autoResumeBluetoothMedia: Boolean = true,
+    val homeAddress: String = "",
+    val workAddress: String = ""
 )
 
 fun defaultShortcuts() = listOf(
@@ -136,6 +182,7 @@ fun AppSettings.activeWidgetIds(): Set<String> = buildSet {
     if (showNowPlaying) add("NOW_PLAYING")
     if (showRadio) add("RADIO")
     if (showFuelHub) add("FUEL_HUB")
+    if (showPrayerWidget) add("PRAYER")
     if (showClock) add("CLOCK")
     if (showWeather) add("WEATHER")
     if (showTelemetry) add("TELEMETRY")
@@ -148,7 +195,6 @@ fun AppSettings.activeWidgetIds(): Set<String> = buildSet {
 /**
  * Moves [movingId] to ([targetX], [targetY]) and pushes any displaced widgets to the
  * first available free cell, cascading until all conflicts are resolved.
- * Operates only on the supplied [layout] list — callers should pass only active/enabled widgets.
  */
 fun computeWidgetMove(
     layout: List<WidgetConfig>,
@@ -166,7 +212,6 @@ fun computeWidgetMove(
     val result  = mutableListOf(placed)
     val occupied = buildOccupied(result).toMutableSet()
 
-    // Stable widgets that don't conflict go first; displaced ones are pushed afterwards
     val (stable, displaced) = others.partition { w -> result.none { widgetsOverlap(it, w) } }
 
     for (w in stable) {

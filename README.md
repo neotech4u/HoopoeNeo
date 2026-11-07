@@ -1,137 +1,149 @@
 <div align="center">
-  <img width="200" height="200" alt="Hoopoe Launcher Logo" src="./hoopoe_logo.png" />
-  <h1>Hoopoe Launcher</h1>
-  <p><strong>A personalized, lightweight, offline-first Android launcher engineered for aftermarket car head units.</strong></p>
+  <img width="200" height="200" alt="Hoopoe Automotive Companion Logo" src="./hoopoe_logo.png" />
+  <h1>HOOPOE — Smart Automotive Companion</h1>
+  <p><strong>A premium, standalone automotive infotainment cockpit and companion application engineered for aftermarket Android head units.</strong></p>
 
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-  [![Latest Release](https://img.shields.io/github/v/release/neotech4u/hoopoe?color=blue&label=Release)](https://github.com/neotech4u/hoopoe/releases/latest)
-  [![Download APK](https://img.shields.io/badge/Download-APK-success?logo=android)](https://github.com/neotech4u/hoopoe/releases/download/v1.0.0/hoopoe-launcher-v1.0.0.apk)
   [![Platform: Android](https://img.shields.io/badge/Platform-Android%2010%2B%20%28API%2029%2B%29-green.svg)](https://developer.android.com)
   [![UI: Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-purple.svg)](https://developer.android.com/jetpack/compose)
+  [![Architecture: Standalone App](https://img.shields.io/badge/Architecture-Standalone%20Companion-gold.svg)](#-standalone-companion-architecture)
   [![Optimized for 2GB RAM](https://img.shields.io/badge/RAM-2GB%20Optimized-orange.svg)](#-optimizations-for-2-gb-ram--aftermarket-socs)
 </div>
 
 ---
 
 ## 📖 Table of Contents
-- [Overview & Philosophy](#-overview--philosophy)
-- [Latest Release Highlights](#-latest-release-highlights)
-- [Core Features](#-core-features)
-- [Optimizations for 2 GB RAM & Aftermarket SoCs](#-optimizations-for-2-gb-ram--aftermarket-socs)
-- [Hardware & Compatibility Profile](#-hardware--compatibility-profile)
+- [Overview & Evolution](#-overview--evolution)
+- [Standalone Companion Architecture](#-standalone-companion-architecture)
+- [Complete 10-Module Inventory](#-complete-10-module-inventory)
+- [Hardware & Vehicle Compatibility](#-hardware--vehicle-compatibility)
+- [Optimizations for 2 GB RAM & Automotive SoCs](#-optimizations-for-2-gb-ram--automotive-socs)
 - [Installation Guide](#-installation-guide)
 - [Building from Source](#-building-from-source)
+- [Project Documentation](#-project-documentation)
 - [License & Attribution](#-license--attribution)
 
 ---
 
-## 🧠 Overview & Philosophy
+## 🧠 Overview & Evolution
 
-Most modern aftermarket head units are running underpowered, resource-constrained automotive chips (e.g. Allwinner, Rockchip, MediaTek) with 1–2 GB RAM. Furthermore, most drivers rely on wireless CarPlay or Android Auto, meaning the underlying Android head unit remains **offline** most of the time.
+HOOPOE was originally conceived as a custom Android car launcher. However, replacing the system default launcher (`category.HOME`) on aftermarket head units introduces critical issues:
+- Interference with factory-integrated 360-degree reversing cameras.
+- Black-screen lockouts during MCU firmware sleep/wake cycles.
+- Loss of proprietary OEM hardware settings (radio, steering wheel controls, amplifier DSP).
 
-**Hoopoe Launcher** is engineered around this reality:
-1. **OEM+ Automotive Aesthetics:** Clean, distraction-free dashboard typography and dark theme by default, eliminating cluttered launcher interfaces.
-2. **Offline-First Resilience:** Fully functional without an active Wi-Fi connection. GPS gauges, trip meters, clocks, and widgets operate completely offline without blank screens or network hangs.
-3. **Hardware Preservation:** Keeps factory applications accessible (Radio tuner, Bluetooth phone, reversing camera, factory settings) without requiring root access or MCU tampering.
-4. **Lean Memory Footprint:** Tuned to run smoothly within 2 GB RAM without aggressive background churn or memory leaks.
-
----
-
-## 🚀 Latest Release Highlights
-
-### 🦅 Official Hoopoe Rebranding
-- **Application ID & Namespace:** Refactored to `com.hoopoe.launcher`.
-- **Branded App Icons:** Clean multi-density mipmaps (`mdpi` through `xxxhdpi`) in square and rounded formats.
-- **Redesigned Onboarding:** Modern, high-resolution first-run onboarding screen.
-
-### 🎬 Startup Logon Video Animation
-- **Hardware-Accelerated Boot Animation:** Integrated custom boot animation (`hoopoe_logon.mp4`) running via native hardware-accelerated video playback.
-- **Driver Distraction Safeguard:** Smart session tracking ensures the boot video runs **only on cold boot**. Returning to the Home screen while driving or switching apps bypasses the video instantly.
-- **Tap-to-Skip & Error Resilient:** Instant tap-to-skip support with fallback protection if the media engine encounters hardware decoder delays.
-- **Configurable in Settings:** Toggle the animation on/off at will, or use the **Preview Logon Animation** button in Settings to inspect playback.
-
-### 🏎️ Futuristic 3-Zone Automotive HUD Layout (1920x720 / 1920x1080)
-- **Zone 1 (Left - Driver Telemetry):** Pure GPS-driven digital speedometer (`KM/H` / `MPH`), interactive metric ring (Speed / RPM / Fuel), P-R-N-D gear selector, and a 60fps neon speed vs. time waveform graph.
-- **Zone 2 (Center - Neon Navigation HUD):** Cyber wireframe perspective vector road canvas with dynamic turn-by-turn guidance prompt ("IN 250 METERS"), vehicle silhouette, and direct 1-tap launcher for installed OSM (OsmAnd, Organic Maps) or Google Maps.
-- **Zone 3 (Right - Modular Glanceable Cards):**
-  - **Media Player & FM Radio Deck:** Tactile 48dp+ play/pause controls, album art, audio frequency spectrum visualizer, scrub timeline, and seamless 1-tap toggle between streaming media players and FM/AM hardware radio.
-  - **Trip & Fuel Telemetry Hub:** Dual-mode live trip telemetry (distance, economy, instant fuel cost) and visual fuel tank gauge with quick refuel log modal.
-- **Top Status Rail:** Live digital clock, weather temperature, WiFi/cellular telemetry, OBD-II/CAN link status badge, and **Jarvis AI Assistant Orb** (holographic arc-reactor with tap-to-voice Google Assistant).
-- **Travel Dua Modal:** Automatic Tamil & English travel dua display after logon animation with "Fi Aman Allah / Happy Journey" driver confirmation.
-
-### 🚗 Ergonomics & Automotive Dashboard Customization
-- **Right-Hand Drive (RHD) Ready:** Default sidebar positioned on the **RIGHT** for intuitive driver reach in RHD markets (India, UK, Japan, Australia, etc.), with full toggle support for Left and Bottom configurations.
-- **Vehicle Customization:** Default car title preset to `DZIRE` with full custom name configuration.
-- **Expanded Quick Navigation:** Added dedicated **Navi** shortcut alongside Phone, Music, and Settings.
-- **Intelligent Fallback Role Dispatcher:** Seamlessly detects and routes app launches for Navigation, Music, Bluetooth Phone, Reversing Camera, Radio, and Android System Settings across diverse OEM ROMs.
+**Development Direction:**
+HOOPOE now operates as a **Standalone Automotive Companion Application**. It delivers a full cockpit infotainment environment—digital speedometer, navigation centre, media control, OBD-II telemetry, TPMS, and an Islamic travel companion—without modifying system partitions, requiring root, or replacing the factory launcher.
 
 ---
 
-## ✨ Core Features
+## 🛡️ Standalone Companion Architecture
 
-### 🧩 Modular Widget Grid
-The dashboard features a drag-and-drop, resize-capable grid. Reposition, scale, and stack panes freely to fit your head unit's aspect ratio.
-
-### 🎛️ Instrument Panel Widgets
-- **Smart Music Player:** Pulls track metadata, album art, and playback controls from local players and streaming services (Spotify, YouTube Music, etc.).
-- **Digital Speedometer:** GPS-based speed readout with configurable smoothing.
-- **Trip Meter & 0–100 km/h Timer:** Rolling odometer and elapsed time tracking with an integrated acceleration timer.
-- **Digital Clock & Date:** Large touch-friendly clock widget with battery-friendly minute-boundary updating.
-- **Head Unit Vitals:** Real-time CPU usage, memory pressure, and temperature diagnostics.
-- **Dynamic Weather:** Automatically checks network status—displays weather when connected, hides cleanly when offline.
-- **Altimeter & GPS Compass:** Live altitude and directional heading derived directly from offline satellite NMEA data.
-
-### 🗂️ App Drawer & Factory Integration
-- Discovers all installed apps, including OEM vehicle apps (CarPlay/Android Auto receivers, Radio, Reversing Camera, MCU settings) often hidden by stock Android launchers.
-- Searchable, touch-friendly grid optimized for landscape screens.
-
-### 🌗 Smart Day/Night Theme Engine
-- **Dark Mode by Default:** Optimized for evening driving and OLED/IPS car panels.
-- **Sunset Mode:** Switches between Day and Night palettes automatically based on local offline sunset/sunrise astronomical calculations.
-- **System Sync:** Follows vehicle headlight triggers when supported by the head unit's illumination wire.
+1. **Non-Invasive Execution:** Runs like any standard Android application. Drivers can launch it manually, configure optional automatic activation on device boot, or exit back to the factory system launcher at any time.
+2. **Reverse Camera Coexistence:** Passive Android lifecycle yielding ensures that when reverse gear is engaged, the factory 360-degree camera takes over the display without interference. HOOPOE seamlessly resumes when reverse is disengaged.
+3. **No Root or Firmware Tampering:** Does not modify system partitions, SELinux policies, or proprietary MCU daemons.
+4. **Hardware Failure Isolation:** Graceful fallbacks for missing sensors—satellite GPS metrics are strictly segregated from ECU OBD-II parameters, and offline fallbacks prevent crashes when hardware is unavailable.
 
 ---
 
-## ⚡ Optimizations for 2 GB RAM & Aftermarket SoCs
+## 🚀 Complete 10-Module Inventory
 
-To ensure peak responsiveness on budget quad-core SoCs:
-* **Minute-Boundary Clock Updates:** The digital clock calculates delay until the next minute boundary rather than ticking every second, eliminating 59 unnecessary Jetpack Compose recompositions and CPU wakeups every minute.
-* **Bitmap Clamping:** Media album art received from `MediaSession` notifications is clamped to a maximum resolution of 512×512, avoiding sudden OOM crashes during heavy music playback.
-* **Safe Storage Access Framework (SAF):** Wallpaper selection handles non-standard AOSP document pickers gracefully without crashing on stripped-down car ROMs.
-* **Low Background Churn:** Zero background telemetry, analytics, or unnecessary background polling services.
+### 🏎️ Module 1: Automotive Dashboard (HUD)
+- **Digital Speedometer:** Low-latency GPS speed in KM/H or MPH with needle animation and overspeed alert styling.
+- **Digital Clock & Date:** High-contrast touch-friendly display with minute-boundary update intervals to prevent CPU churn.
+- **Holographic Assistant Ring (Jarvis Orb):** Interactive HUD orb indicating cruise standby (Cyan), Adhan/prayer time (Emerald), overspeed breach (Crimson), or weather alert (Amber).
+- **MDUS OS Bottom Dock:** Branded Hoopoe emblem and styled technology identity at bottom-center.
+- **Fuel & KM Log Widget:** Quick refuel tracking and mileage odometer.
+- **3 Layout Presets:** Standard Cockpit (RHD), Minimal Focus HUD, and Tri-Pane Telemetry.
+
+### 🗺️ Module 2: Navigation Centre
+- **1-Touch Destination Routing:** Instant search and navigation intents to Google Maps, OsmAnd, or Organic Maps.
+- **Quick POIs:** One-tap routes to nearby Petrol Stations, Mosques, Hospitals, and Restaurants.
+- **Home & Work Shortcuts:** Direct commuting routes configured in preferences.
+- **Embedded Map View:** Interactive OpenStreetMap canvas for live visual situational awareness.
+
+### 🎵 Module 3: Media Centre
+- **Universal Playback Controls:** Tactile 48dp+ buttons for Play/Pause, Next Track, Previous Track, and Progress Scrubbing.
+- **Dual Source Switching:** Instant toggle between streaming/local media (Spotify, VLC, USB audio) and the vehicle's **FM/AM Hardware Radio**.
+- **MediaSession Integration:** Low-overhead metadata parsing with album art clamped to 512×512 to prevent OOM errors on 2 GB RAM.
+
+### 🔧 Module 4: Vehicle Information & Diagnostics
+- **GPS vs. ECU Data:** Strictly isolates GPS-derived telemetry (speed, heading, altitude) from authentic vehicle ECU data.
+- **Bluetooth OBD-II (ELM327):** Real SPP RFCOMM engine querying RPM, coolant temperature, throttle position, and battery voltage, with a DTC trouble-code scanner.
+- **TPMS 4-Wheel Monitor:** Visualizes real-time tyre pressure (PSI) and temperature (°C) with warning thresholds.
+
+### 🕌 Module 5: Islamic Travel Companion
+- **Offline Astronomical Prayer Timings:** Computes Fajr, Dhuhr, Asr, Maghrib, and Isha using Meeus solar algorithms without internet connectivity.
+- **5 Calculation Methods:** Muslim World League (MWL), ISNA, Egyptian General Authority, Umm Al-Qura (Makkah), and Karachi.
+- **Asr Juristic Methods:** Standard (Shafi'i, Maliki, Hanbali) and Hanafi calculation.
+- **Qibla Direction:** Real-time compass heading and Kaaba bearing with figure-8 sensor calibration guidance.
+- **Travel Dua (Safar Ki Dua):** Authentic Arabic text, transliteration, English translation, and offline Text-to-Speech audio recitation.
+
+### ⚡ Module 6: Smart Automation
+- **Boot Auto-Launch:** Optional `BootReceiver` triggers HOOPOE upon head unit cold boot.
+- **Logon Video Animation:** Hardware-accelerated `hoopoe_logon.mp4` boot animation with instant tap-to-skip.
+- **Overspeed Warning System:** Configurable threshold triggering visual alerts on the speedometer and Assistant Ring.
+- **Adhan Reminders:** Audio and visual notifications at prayer time arrivals.
+
+### 🎙️ Module 7: Voice Assistant
+- **Push-to-Talk Activation:** Single tap on the central Assistant Ring or microphone icon triggers speech recognition.
+- **Automotive Voice Intents:** Hands-free commands for navigation, music control, prayer times, and diagnostics.
+- **TTS Feedback:** Natural voice feedback for driving status and queries.
+
+### 🎛️ Module 8: Quick Controls
+- One-touch panel for screen brightness adjustment, Wi-Fi and Bluetooth settings shortcuts, and an **Exit to Car System Launcher** button.
+
+### 🎨 Module 9: Theme & Customization Engine
+- **4 Master Themes:**
+  1. *Dark Automotive (Default)* — Obsidian background with electric blue accents.
+  2. *Black & Champagne Gold* — Premium luxury cockpit aesthetic.
+  3. *Graphite Tech* — Industrial dark graphite surfaces with neon cyan accents.
+  4. *Minimal Dashboard* — Clean monochrome HUD for zero distraction.
+- Full DataStore persistence across reboots.
+
+### 📷 Module 10: Reverse Camera & Head-Unit Coexistence
+- Non-invasive lifecycle handling yielding to the factory 360-degree reverse camera.
+- Manual camera shortcut to launch the factory reverse camera application.
 
 ---
 
-## 📟 Hardware & Compatibility Profile
+## 📟 Hardware & Vehicle Compatibility
 
-| Parameter | Specifications / Validated Target |
+| Parameter | Specifications / Target Profile |
 | :--- | :--- |
-| **Primary Target Vehicle** | 2020 Maruti Suzuki Dzire |
-| **SoC / Board** | Allwinner `sun50iw10p1` (Quad-core ARM Cortex-A53 up to 1.8 GHz) |
-| **GPU** | PowerVR GE8300 |
-| **RAM** | 2 GB |
-| **Storage** | 32 GB Internal Storage |
-| **Android Version** | Android 10 (API level 29) & upwards |
-| **Display** | Landscape Touchscreen (720p / 1080p compatible) |
-| **Root Required?** | **No** (installs cleanly as a standard non-root Android application) |
+| **Primary Target Vehicle** | Maruti Suzuki Dzire 2020 (RHD, India) |
+| **Primary Target Head Unit** | JGL Aftermarket Android Head Unit |
+| **SoC / Chipset** | Allwinner / Rockchip / MediaTek / UIS7862 |
+| **Reported OS Version** | Android 15 (API 35/36 compatible) |
+| **RAM Footprint** | Optimized for 2 GB RAM (runs comfortably under 120 MB PSS) |
+| **Storage** | 128 GB Internal Storage |
+| **Factory Integrations** | 360° Reverse Camera, Bluetooth Handsfree/A2DP, GPS antenna |
+| **Root Required?** | **No** (Standard standalone APK) |
+
+---
+
+## ⚡ Optimizations for 2 GB RAM & Automotive SoCs
+
+- **Minute-Boundary Clock Updates:** Eliminates 59 unnecessary recompositions and CPU wakeups every minute.
+- **Bitmap Clamping:** Album artwork is clamped to 512×512 pixels to prevent Out-Of-Memory crashes.
+- **Vector HUD Animations:** Lightweight native Canvas drawing rather than heavy video or Lottie loops.
+- **Zero Background Polling:** GPS and Bluetooth receivers strictly unregister when the app is paused or in background.
 
 ---
 
 ## 📲 Installation Guide
 
 ### Method 1: USB Flash Drive (Recommended)
-1. Download the release APK directly from GitHub:
-   - **[Download hoopoe-launcher-v1.0.0.apk](https://github.com/neotech4u/hoopoe/releases/download/v1.0.0/hoopoe-launcher-v1.0.0.apk)**
-2. Copy the APK onto a USB flash drive (FAT32 format).
-3. Plug the drive into your car's USB port.
-4. Open the head unit's **File Manager** or **ApkInstaller** app.
-5. Select `hoopoe-launcher-debug.apk` and tap **Install**.
-6. Press the **Home** button on your unit, select **Hoopoe Launcher**, and select **"Just Once"** to verify stability before setting as default.
+1. Copy `app-debug.apk` to a USB flash drive (FAT32 or exFAT).
+2. Plug the USB drive into your car's USB port.
+3. Open the head unit's **File Manager** or **ApkInstaller**.
+4. Select `app-debug.apk` and tap **Install**.
+5. Launch **HOOPOE** from your app drawer.
 
-### Method 2: ADB (Android Debug Bridge)
-If your head unit has USB debugging or Wi-Fi debugging enabled:
+### Method 2: Wireless or Wired ADB
 ```bash
-adb install -r hoopoe-launcher-debug.apk
+adb connect <head-unit-ip>:5555
+adb install -r app-debug.apk
 ```
 
 ---
@@ -140,19 +152,13 @@ adb install -r hoopoe-launcher-debug.apk
 
 ### Prerequisites
 - **JDK:** OpenJDK 17
-- **Android SDK:** Platform 34, Build-Tools 34.0.0
+- **Android SDK:** Platform 36 (Android 16 DP/15+), Build-Tools 36.0.0
 - **Gradle:** 9.4.1 (configured via wrapper)
 
 ### Build Command
-Run the standard Gradle wrapper command:
 ```bash
-# Windows
-.\gradlew.bat assembleDebug
-
-# Linux / macOS
 ./gradlew assembleDebug
 ```
-
 The compiled APK will be generated at:
 ```
 app/build/outputs/apk/debug/app-debug.apk
@@ -160,9 +166,17 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ---
 
+## 📚 Project Documentation
+- [PROJECT_AUDIT.md](file:///home/mdus/Documents/Car%20app%20Hopoo/PROJECT_AUDIT.md) — Comprehensive technical audit & gap analysis.
+- [ARCHITECTURE.md](file:///home/mdus/Documents/Car%20app%20Hopoo/ARCHITECTURE.md) — System architecture, HAL, and memory management.
+- [FEATURE_ROADMAP.md](file:///home/mdus/Documents/Car%20app%20Hopoo/FEATURE_ROADMAP.md) — Module specifications & milestones.
+- [DEVICE_COMPATIBILITY.md](file:///home/mdus/Documents/Car%20app%20Hopoo/DEVICE_COMPATIBILITY.md) — Hardware profile & 360° camera coexistence.
+- [USER_GUIDE.md](file:///home/mdus/Documents/Car%20app%20Hopoo/USER_GUIDE.md) — Complete user manual & setup instructions.
+- [KNOWN_LIMITATIONS.md](file:///home/mdus/Documents/Car%20app%20Hopoo/KNOWN_LIMITATIONS.md) — Hardware boundaries & fallback behaviors.
+
+---
+
 ## 📄 License & Attribution
 
 This project is licensed under the **[MIT License](LICENSE)**.
-
-### Attribution
-Hoopoe Launcher builds upon the architecture and open-source foundations of [openlauncher](https://github.com/dw2lam/openlauncher) by **dw2lam**, customized and maintained by **Mohamed Usman** ([@neotech4u](https://github.com/neotech4u)) for aftermarket automotive head units.
+Maintained by **Mohamed Usman** ([@neotech4u](https://github.com/neotech4u)).

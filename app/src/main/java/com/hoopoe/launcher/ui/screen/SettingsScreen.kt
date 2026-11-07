@@ -49,6 +49,7 @@ fun SettingsScreen(
     onReset: () -> Unit,
     onPreviewLogon: () -> Unit = {},
     onPreviewTravelDua: () -> Unit = {},
+    onNavigate: (com.hoopoe.launcher.model.NavDestination) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -141,42 +142,41 @@ fun SettingsScreen(
             ) { permissionRefresh++ }
 
             SettingsButton(
-                label    = "Set as Default Launcher",
-                sublabel = if (isDefaultLauncher) "Active — Hoopoe Launcher is the home app"
-                           else "Required so the head unit boots into Hoopoe Launcher",
-                icon     = Icons.Default.Home,
-                accent   = if (isDefaultLauncher) accent else Color(0xFF993333),
+                label    = "Exit to Car System Launcher",
+                sublabel = "Safely returns to factory Android home launcher without modifying system",
+                icon     = Icons.Default.ExitToApp,
+                accent   = accent,
                 onClick  = {
-                    // Preferred: the system home-role dialog (API 29+). Vendor ROMs
-                    // sometimes ship without it, so fall through to the home-settings
-                    // screen, then the default-apps screen.
-                    var launched = false
-                    if (android.os.Build.VERSION.SDK_INT >= 29) {
-                        val rm = context.getSystemService(android.app.role.RoleManager::class.java)
-                        if (rm != null && rm.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME) &&
-                            !rm.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)
-                        ) {
-                            launched = runCatching {
-                                homeRoleLauncher.launch(rm.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME))
-                            }.isSuccess
-                        }
+                    val home = Intent(Intent.ACTION_MAIN).apply {
+                        addCategory(Intent.CATEGORY_HOME)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
-                    if (!launched) {
-                        launched = runCatching {
-                            context.startActivity(
-                                Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            )
-                        }.isSuccess
-                    }
-                    if (!launched) {
-                        runCatching {
-                            context.startActivity(
-                                Intent("android.settings.MANAGE_DEFAULT_APPS_SETTINGS")
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            )
-                        }
-                    }
+                    runCatching { context.startActivity(home) }
                 }
+            )
+            SettingsDivider()
+            SettingsButton(
+                label    = "Permissions & Hardware Profile",
+                sublabel = "View all permissions, 360° camera compatibility & 2 GB RAM guards",
+                icon     = Icons.Default.VerifiedUser,
+                accent   = accent,
+                onClick  = { onNavigate(com.hoopoe.launcher.model.NavDestination.PERMISSIONS_COMPATIBILITY) }
+            )
+            SettingsDivider()
+            SettingsButton(
+                label    = "Theme & Dashboard Layouts",
+                sublabel = "Choose 3-Zone HUD, Minimal, or Cockpit Quad, plus 4 luxury color palettes",
+                icon     = Icons.Default.Palette,
+                accent   = accent,
+                onClick  = { onNavigate(com.hoopoe.launcher.model.NavDestination.THEME_CUSTOMIZATION) }
+            )
+            SettingsDivider()
+            SettingsButton(
+                label    = "Smart Automation Settings",
+                sublabel = "Boot auto-launch, Bluetooth triggers, overspeed warnings, and prayer alerts",
+                icon     = Icons.Default.ElectricBolt,
+                accent   = accent,
+                onClick  = { onNavigate(com.hoopoe.launcher.model.NavDestination.AUTOMATION_SETTINGS) }
             )
             SettingsDivider()
             SettingsButton(

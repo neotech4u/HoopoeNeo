@@ -256,7 +256,115 @@ class MainActivity : ComponentActivity() {
                                         onRadioCycleFm        = { vm.radioCycleFm() },
                                         onRadioSwitchAm       = { vm.radioSwitchAm() },
                                         onRadioTune           = { band, freq -> vm.radioTune(band, freq) },
-                                        onAssignRadio         = { vm.startRadioPicker() }
+                                        onAssignRadio         = { vm.startRadioPicker() },
+                                        onOpenIslamic         = { vm.navigate(NavDestination.ISLAMIC_COMPANION) },
+                                        onOpenVoiceAssistant  = { vm.navigate(NavDestination.VOICE_ASSISTANT) },
+                                        onOpenQuickControls   = { vm.navigate(NavDestination.QUICK_CONTROLS) },
+                                        onOpenDiagnostics     = { vm.navigate(NavDestination.OBD_DIAGNOSTICS) },
+                                        onOpenNavigationCentre = { vm.navigate(NavDestination.NAVIGATION_CENTRE) },
+                                        onOpenMediaCentre     = { vm.navigate(NavDestination.MEDIA_CENTRE) }
+                                    )
+
+                                    NavDestination.NAVIGATION_CENTRE -> NavigationScreen(
+                                        settings         = settings,
+                                        locationFlow     = vm.location,
+                                        bearingFlow      = vm.compassBearing,
+                                        installedApps    = apps,
+                                        accent           = accent,
+                                        isDayMode        = isDayMode,
+                                        onBackToCockpit  = { vm.navigate(NavDestination.HOME) }
+                                    )
+
+                                    NavDestination.MEDIA_CENTRE -> MediaScreen(
+                                        nowPlaying          = nowPlaying,
+                                        hardwareRadio       = hardwareRadio,
+                                        installedApps       = apps,
+                                        accent              = accent,
+                                        isDayMode           = isDayMode,
+                                        onPlayPause         = vm::playPause,
+                                        onNext              = vm::skipNext,
+                                        onPrev              = vm::skipPrev,
+                                        onRadioSeekUp       = { vm.radioSeekUp() },
+                                        onRadioSeekDown     = { vm.radioSeekDown() },
+                                        onRadioCycleFm      = { vm.radioCycleFm() },
+                                        onRadioSwitchAm     = { vm.radioSwitchAm() },
+                                        onLaunchMediaApp    = { vm.launchApp(it) },
+                                        onBackToCockpit     = { vm.navigate(NavDestination.HOME) }
+                                    )
+
+                                    NavDestination.VEHICLE_INFO -> VehicleInfoScreen(
+                                        location          = vm.location.value,
+                                        accent            = accent,
+                                        isDayMode         = isDayMode,
+                                        onBackToCockpit   = { vm.navigate(NavDestination.HOME) },
+                                        onOpenDiagnostics = { vm.navigate(NavDestination.OBD_DIAGNOSTICS) }
+                                    )
+
+                                    NavDestination.OBD_DIAGNOSTICS -> ObdScreen(
+                                        accent          = accent,
+                                        isDayMode       = isDayMode,
+                                        onBackToCockpit = { vm.navigate(NavDestination.HOME) }
+                                    )
+
+                                    NavDestination.TPMS_DASHBOARD -> TpmsScreen(
+                                        accent          = accent,
+                                        isDayMode       = isDayMode,
+                                        onBackToCockpit = { vm.navigate(NavDestination.HOME) }
+                                    )
+
+                                    NavDestination.ISLAMIC_COMPANION -> IslamicScreen(
+                                        location        = vm.location.value,
+                                        bearing         = vm.compassBearing.value,
+                                        method          = settings.prayerCalculationMethod,
+                                        asrMethod       = settings.asrMethod,
+                                        accent          = accent,
+                                        isDayMode       = isDayMode,
+                                        onBackToCockpit = { vm.navigate(NavDestination.HOME) },
+                                        onOpenDuaModal  = { vm.previewTravelDua() }
+                                    )
+
+                                    NavDestination.VOICE_ASSISTANT -> VoiceAssistantScreen(
+                                        currentWeatherSummary = weather?.temperatureDisplay(settings.unitSystem.name == "METRIC") ?: "",
+                                        nextPrayerSummary     = "",
+                                        currentSpeedKmh       = ((vm.location.value?.speedMps ?: 0f) * 3.6f).toInt(),
+                                        accent                = accent,
+                                        isDayMode             = isDayMode,
+                                        onNavigateDestination = { vm.navigate(it) },
+                                        onMediaPlay           = { vm.playPause() },
+                                        onMediaPause          = { vm.playPause() },
+                                        onMediaNext           = { vm.skipNext() },
+                                        onMediaPrev           = { vm.skipPrev() },
+                                        onLaunchRadio         = { vm.launchHardwareRadioApp() },
+                                        onBackToCockpit       = { vm.navigate(NavDestination.HOME) }
+                                    )
+
+                                    NavDestination.QUICK_CONTROLS -> QuickControlsScreen(
+                                        accent                = accent,
+                                        isDayMode             = isDayMode,
+                                        onNavigateDestination = { vm.navigate(it) },
+                                        onBackToCockpit       = { vm.navigate(NavDestination.HOME) }
+                                    )
+
+                                    NavDestination.AUTOMATION_SETTINGS -> AutomationScreen(
+                                        settings         = settings,
+                                        accent           = accent,
+                                        isDayMode        = isDayMode,
+                                        onUpdateSettings = { block -> vm.updateSettings(block) },
+                                        onBackToCockpit  = { vm.navigate(NavDestination.HOME) }
+                                    )
+
+                                    NavDestination.THEME_CUSTOMIZATION -> ThemeCustomizationScreen(
+                                        settings         = settings,
+                                        accent           = accent,
+                                        isDayMode        = isDayMode,
+                                        onUpdateSettings = { block -> vm.updateSettings(block) },
+                                        onBackToCockpit  = { vm.navigate(NavDestination.HOME) }
+                                    )
+
+                                    NavDestination.PERMISSIONS_COMPATIBILITY -> PermissionsScreen(
+                                        accent          = accent,
+                                        isDayMode       = isDayMode,
+                                        onBackToCockpit = { vm.navigate(NavDestination.HOME) }
                                     )
 
                                     NavDestination.APP_LIBRARY -> AppLibraryScreen(
@@ -283,7 +391,8 @@ class MainActivity : ComponentActivity() {
                                         onUpdate = { block -> vm.updateSettings(block) },
                                         onReset  = { vm.resetSettings() },
                                         onPreviewLogon = { vm.previewLogonAnimation() },
-                                        onPreviewTravelDua = { vm.previewTravelDua() }
+                                        onPreviewTravelDua = { vm.previewTravelDua() },
+                                        onNavigate = { vm.navigate(it) }
                                     )
                                 }
                             }

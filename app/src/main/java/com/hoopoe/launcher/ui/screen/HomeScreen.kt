@@ -37,6 +37,7 @@ import kotlin.math.roundToInt
 import com.hoopoe.launcher.data.AppSettings
 import com.hoopoe.launcher.data.ClockStyle
 import com.hoopoe.launcher.data.computeWidgetMove
+import com.hoopoe.launcher.data.DashboardLayoutPreset
 import com.hoopoe.launcher.data.GRID_COLS
 import com.hoopoe.launcher.data.GRID_ROWS
 import com.hoopoe.launcher.data.WidgetConfig
@@ -45,6 +46,8 @@ import com.hoopoe.launcher.model.WeatherState
 import kotlinx.coroutines.flow.StateFlow
 import com.hoopoe.launcher.ui.theme.LocalDayMode
 import com.hoopoe.launcher.ui.widget.*
+import com.hoopoe.launcher.ui.components.MdusOsDock
+import com.hoopoe.launcher.util.PrayerTimeCalculator
 import java.util.Calendar
 import com.hoopoe.launcher.util.LocationData
 
@@ -58,18 +61,19 @@ private data class WidgetTypeInfo(
 )
 
 private val ALL_WIDGET_TYPES = listOf(
-    WidgetTypeInfo("SPEEDOMETER",  "SPEEDOMETER",  Icons.Default.Speed,         "Standalone GPS speed readout"),
-    WidgetTypeInfo("NAV_MAP",      "MAP (AUTO)",   Icons.Default.Navigation,    "Live embedded OpenStreetMap & GPS tracker"),
-    WidgetTypeInfo("NOW_PLAYING",  "SMART MUSIC",  Icons.Default.MusicNote,     "Track metadata, art & playback controls"),
-    WidgetTypeInfo("RADIO",        "AM/FM RADIO",  Icons.Default.Radio,         "Digital tuner display & live seek"),
-    WidgetTypeInfo("FUEL_HUB",     "FUEL & TRIP",  Icons.Default.LocalGasStation, "Trip & Fuel Telemetry Hub"),
-    WidgetTypeInfo("TRIP_TRACKER", "TRIP METER",   Icons.Default.Route,         "Rolling odometer & 0-100 timer"),
-    WidgetTypeInfo("ALTIMETER",    "ALTIMETER",    Icons.Default.FlightTakeoff, "Elevation & GPS pitch/roll"),
-    WidgetTypeInfo("VITALS",       "UNIT VITALS",  Icons.Default.Dns,           "Real-time CPU, RAM & temperature"),
-    WidgetTypeInfo("TELEMETRY",    "GPS COMPASS",  Icons.Default.Explore,       "Heading & compass bearing"),
-    WidgetTypeInfo("SOUNDBOARD",   "SOUNDBOARD",   Icons.Default.Piano,         "6 assignable sound & synth pads"),
-    WidgetTypeInfo("WEATHER",      "WEATHER",      Icons.Default.Cloud,         "Dynamic connectivity weather"),
-    WidgetTypeInfo("CLOCK",        "CLOCK",        Icons.Default.AccessTime,    "Large digital/analog clock")
+    WidgetTypeInfo("SPEEDOMETER",  "SPEEDOMETER",       Icons.Default.Speed,            "Standalone GPS speed readout"),
+    WidgetTypeInfo("NAV_MAP",      "MAP (AUTO)",        Icons.Default.Navigation,       "Live embedded OpenStreetMap & GPS tracker"),
+    WidgetTypeInfo("NOW_PLAYING",  "SMART MUSIC",       Icons.Default.MusicNote,        "Track metadata, art & playback controls"),
+    WidgetTypeInfo("RADIO",        "AM/FM RADIO",       Icons.Default.Radio,            "Digital tuner display & live seek"),
+    WidgetTypeInfo("FUEL_HUB",     "FUEL & TRIP",       Icons.Default.LocalGasStation,  "Trip & Fuel Telemetry Hub"),
+    WidgetTypeInfo("PRAYER",       "PRAYER COMPANION",  Icons.Default.Mosque,           "Upcoming prayer countdown & schedule"),
+    WidgetTypeInfo("TRIP_TRACKER", "TRIP METER",        Icons.Default.Route,            "Rolling odometer & 0-100 timer"),
+    WidgetTypeInfo("ALTIMETER",    "ALTIMETER",         Icons.Default.FlightTakeoff,    "Elevation & GPS pitch/roll"),
+    WidgetTypeInfo("VITALS",       "UNIT VITALS",       Icons.Default.Dns,              "Real-time CPU, RAM & temperature"),
+    WidgetTypeInfo("TELEMETRY",    "GPS COMPASS",       Icons.Default.Explore,          "Heading & compass bearing"),
+    WidgetTypeInfo("SOUNDBOARD",   "SOUNDBOARD",        Icons.Default.Piano,            "6 assignable sound & synth pads"),
+    WidgetTypeInfo("WEATHER",      "WEATHER",           Icons.Default.Cloud,            "Dynamic connectivity weather"),
+    WidgetTypeInfo("CLOCK",        "CLOCK",             Icons.Default.AccessTime,       "Large digital/analog clock")
 )
 
 private fun canAddWidget(settings: com.hoopoe.launcher.data.AppSettings): Boolean {
@@ -85,6 +89,7 @@ private fun canAddWidget(settings: com.hoopoe.launcher.data.AppSettings): Boolea
         if (settings.showVitals) add("VITALS")
         if (settings.showTripTracker) add("TRIP_TRACKER")
         if (settings.showFuelHub) add("FUEL_HUB")
+        if (settings.showPrayerWidget) add("PRAYER")
         if (settings.showSoundboard) add("SOUNDBOARD")
     }
     val activeWidgets = settings.widgetLayout.filter { it.enabled && it.id in visibleIds }
@@ -141,6 +146,12 @@ fun HomeScreen(
     onRadioSwitchAm: () -> Unit = {},
     onRadioTune: (band: String, freq: Float) -> Unit = { _, _ -> },
     onAssignRadio: () -> Unit = {},
+    onOpenIslamic: () -> Unit = {},
+    onOpenVoiceAssistant: () -> Unit = {},
+    onOpenQuickControls: () -> Unit = {},
+    onOpenDiagnostics: () -> Unit = {},
+    onOpenNavigationCentre: () -> Unit = {},
+    onOpenMediaCentre: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val accent       = Color(settings.accentColor)
@@ -160,6 +171,27 @@ fun HomeScreen(
     val statusIconColor   = if (isDayMode) Color(0xFF475569) else Color(0xFF64748B)
     val controlIconColor  = if (isDayMode) Color(0xFF475569) else Color(0xFF94A3B8)
 
+    val currentLoc by locationFlow.collectAsState()
+    val rawSpeedVal = (currentLoc?.speedMps ?: 0f) * (if (settings.unitSystem.name == "METRIC") 3.6f else 2.237f)
+    val speedKmh = rawSpeedVal.toInt()
+    val isOverspeed = settings.overspeedWarningEnabled && speedKmh > settings.overspeedThresholdKmh
+
+    val prayerTimes = remember(currentLoc, settings.prayerCalculationMethod, settings.asrMethod) {
+        val lat = currentLoc?.latitude ?: 28.6139
+        val lon = currentLoc?.longitude ?: 77.2090
+        PrayerTimeCalculator.calculateTimes(lat, lon, method = settings.prayerCalculationMethod, asrMethod = settings.asrMethod)
+    }
+
+    val isPrayerAlert = settings.prayerAlertsEnabled && prayerTimes.minutesToNextPrayer in 0..15
+    val isSevereWeather = weather != null && (weather.weatherCode in listOf(95, 96, 99, 65, 75))
+
+    val alertText = when {
+        isOverspeed -> "OVERSPEED: $speedKmh KM/H"
+        isPrayerAlert -> "${prayerTimes.nextPrayerName.uppercase()} IN ${prayerTimes.minutesToNextPrayer}M"
+        isSevereWeather -> "WEATHER ALERT"
+        else -> null
+    }
+
     var resizingId    by remember { mutableStateOf<String?>(null) }
     var contextMenuId by remember { mutableStateOf<String?>(null) }
 
@@ -173,7 +205,8 @@ fun HomeScreen(
     var isRightBlinker by remember { mutableStateOf(false) }
     var showRefuelDialog by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
 
         // ── Futuristic Top Status Rail ──────────────────────────────────────────
         Row(
@@ -265,7 +298,7 @@ fun HomeScreen(
                     .clip(RoundedCornerShape(14.dp))
                     .background(if (isObdOnline) accent.copy(alpha = 0.15f) else Color(0xFFFF9100).copy(alpha = 0.15f))
                     .border(1.dp, if (isObdOnline) accent.copy(alpha = 0.5f) else Color(0xFFFF9100).copy(alpha = 0.5f), RoundedCornerShape(14.dp))
-                    .clickable { fuelRepo.toggleObdConnection() }
+                    .clickable { onOpenDiagnostics() }
                     .padding(horizontal = 8.dp, vertical = 3.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -291,10 +324,15 @@ fun HomeScreen(
 
             Spacer(Modifier.width(10.dp))
 
-            // Jarvis Smart Assistant Arc-Reactor (Small, futuristic, tap triggers Google Assistant)
+            // Low-Resource Holographic Assistant Ring with Notification Alerts
             com.hoopoe.launcher.ui.components.JarvisOrb(
                 accent = accent,
-                orbSize = 32.dp,
+                orbSize = 34.dp,
+                isOverspeed = isOverspeed,
+                isPrayerAlert = isPrayerAlert,
+                isWeatherAlert = isSevereWeather,
+                alertText = alertText,
+                onClick = onOpenVoiceAssistant,
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
 
@@ -424,6 +462,7 @@ fun HomeScreen(
                 if (settings.showSpeedometer) add("SPEEDOMETER")
                 if (settings.showNavMap) add("NAV_MAP")
                 if (settings.showFuelHub) add("FUEL_HUB")
+                if (settings.showPrayerWidget) add("PRAYER")
                 if (settings.showVitals) add("VITALS")
                 if (settings.showTripTracker) add("TRIP_TRACKER")
                 if (settings.showSoundboard) add("SOUNDBOARD")
@@ -502,6 +541,7 @@ fun HomeScreen(
                     "SPEEDOMETER" -> "SPEED"
                     "TRIP_TRACKER" -> "TRIP"
                     "FUEL_HUB"    -> "FUEL HUB"
+                    "PRAYER"      -> "PRAYER"
                     "SOUNDBOARD"  -> "SOUND"
                     else          -> w.id
                 }
@@ -684,6 +724,13 @@ fun HomeScreen(
                             onOpenRefuel = { showRefuelDialog = true },
                             modifier  = Modifier.fillMaxSize()
                         )
+                        "PRAYER" -> PrayerWidget(
+                            prayerTimes = prayerTimes,
+                            accent = accent,
+                            isDayMode = isDayMode,
+                            onClick = onOpenIslamic,
+                            modifier = Modifier.fillMaxSize()
+                        )
                         "SOUNDBOARD" -> SoundboardWidget(
                             pads      = settings.soundboardPads,
                             accent    = accent,
@@ -759,23 +806,38 @@ fun HomeScreen(
         }
     }
 
-    // ── Widget library ────────────────────────────────────────────────────────
-    if (widgetLibraryOpen) {
-        WidgetLibraryDialog(
-            settings  = settings,
-            accent    = accent,
-            isDayMode = isDayMode,
-            onAdd     = { id -> onAddWidget(id) },
-            onRemove  = { id -> onRemoveWidget(id) },
-            onDismiss = { widgetLibraryOpen = false }
-        )
-    }
+        // Lowest-Middle MDUS OS Automotive Logo Space & Controls Dock
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 6.dp)
+                .zIndex(2f)
+        ) {
+            MdusOsDock(
+                accent = accent,
+                isDayMode = isDayMode,
+                onClick = onOpenQuickControls
+            )
+        }
 
-    if (showRefuelDialog) {
-        com.hoopoe.launcher.ui.components.RefuelDialog(
-            accent = accent,
-            onDismiss = { showRefuelDialog = false }
-        )
+        // ── Widget library ────────────────────────────────────────────────────────
+        if (widgetLibraryOpen) {
+            WidgetLibraryDialog(
+                settings  = settings,
+                accent    = accent,
+                isDayMode = isDayMode,
+                onAdd     = { id -> onAddWidget(id) },
+                onRemove  = { id -> onRemoveWidget(id) },
+                onDismiss = { widgetLibraryOpen = false }
+            )
+        }
+
+        if (showRefuelDialog) {
+            com.hoopoe.launcher.ui.components.RefuelDialog(
+                accent = accent,
+                onDismiss = { showRefuelDialog = false }
+            )
+        }
     }
 }
 

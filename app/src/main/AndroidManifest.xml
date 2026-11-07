@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Network for weather API -->
+    <!-- Network for dynamic weather API & online navigation intents -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -9,24 +10,40 @@
     <!-- Broadcast permission for MCU head unit event service -->
     <uses-permission android:name="com.szchoiceway.permission.broadcast" />
 
-    <!-- GPS for telemetry and weather location -->
+    <!-- GPS for telemetry, speed, compass and weather location -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Required for LocationManager.sendExtraCommand (A-GPS reset) — normal protection, auto-granted -->
     <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
 
-    <!-- Compass / sensors -->
+    <!-- Sensors (Magnetometer & Accelerometer for compass/altimeter) -->
     <uses-permission android:name="android.permission.BODY_SENSORS" />
 
-    <!-- Media session control (requires notification access grant by user) -->
+    <!-- Media session control (Now Playing) -->
     <uses-permission android:name="android.permission.MEDIA_CONTENT_CONTROL" />
+
+    <!-- Bluetooth for ELM327 OBD-II and TPMS adapters -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+
+    <!-- Voice Assistant speech recognition -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Boot completed for optional automatic activation -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Notifications for prayer times and overspeed alerts -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Wallpaper from gallery -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
-    <!-- Query all packages required on API 30+ for getInstalledApplications -->
+    <!-- Query all packages for automotive shortcuts and factory apps -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
     <!-- Required on API 30+ so PackageManager returns ALL launcher apps -->
@@ -35,10 +52,14 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
     </queries>
 
     <application
-        android:label="Hoopoe Launcher"
+        android:label="HOOPOE"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
@@ -46,7 +67,7 @@
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
         android:exported="true">
 
-        <!-- Single launcher activity -->
+        <!-- Standalone Automotive Companion Main Activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -55,12 +76,11 @@
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustNothing">
 
-            <!-- HOME launcher intent filters -->
+            <!-- Standard Application Launcher Intent Filters (NON-DESTRUCTIVE - Does NOT hijack HOME) -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
@@ -68,12 +88,24 @@
         <service
             android:name=".service.MediaListenerService"
             android:exported="true"
-            android:label="Hoopoe Launcher Media"
+            android:label="HOOPOE Media"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <!-- Optional device boot completion receiver -->
+        <receiver
+            android:name=".receiver.BootReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

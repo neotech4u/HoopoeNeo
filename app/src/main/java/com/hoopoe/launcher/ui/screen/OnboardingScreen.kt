@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -503,7 +504,7 @@ private fun MediaStep(accent: Color, isGranted: Boolean, onGrant: () -> Unit) {
 private fun FinalStep(accent: Color, onSetDefault: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "READY FOR THE ROAD!",
+            text = "READY FOR THE DRIVE!",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = accent,
@@ -511,23 +512,31 @@ private fun FinalStep(accent: Color, onSetDefault: () -> Unit) {
             fontSize = 20.sp
         )
         Text(
-            text = "You are all set up and ready to go. You can set Hoopoe Launcher as your default home app so it launches automatically whenever you start your vehicle.",
+            text = "HOOPOE operates safely as a standalone automotive companion. Your factory launcher, steering controls, and 360° reverse camera remain completely untouched. You can return to the factory system at any time.",
             color = Color(0xFFAAAAAA),
             fontSize = 13.sp,
             lineHeight = 20.sp
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
 
-        Button(
-            onClick = onSetDefault,
-            shape = RoundedCornerShape(4.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1E1E)),
-            modifier = Modifier.height(44.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF0F141F))
+                .border(1.dp, Color(0xFF243048), RoundedCornerShape(8.dp))
+                .padding(12.dp)
         ) {
-            Icon(Icons.Default.Home, null, tint = Color.White, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("SET AS DEFAULT", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 12.sp)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(Icons.Default.Security, null, tint = Color(0xFF00E676), modifier = Modifier.size(20.dp))
+                Text(
+                    text = "Non-invasive: No root access, no firmware modification, full OEM stability.",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
