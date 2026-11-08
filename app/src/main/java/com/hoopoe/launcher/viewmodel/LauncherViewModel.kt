@@ -742,16 +742,31 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun launchHardwareRadioApp() {
         if (hasSzchoicewayMcu) radioStart()
-        val pkg = settings.value.radioPackage.ifEmpty {
-            when {
-                hasSzchoicewayMcu -> "com.szchoiceway.radio"
-                else              -> radioSessionController()?.packageName ?: ""
+        val pm = getApplication<Application>().packageManager
+        val configuredPkg = settings.value.preferredRadioPackage.ifEmpty {
+            settings.value.radioPackage.ifEmpty {
+                when {
+                    hasSzchoicewayMcu -> "com.szchoiceway.radio"
+                    else              -> radioSessionController()?.packageName ?: ""
+                }
             }
+        }
+        var pkg = configuredPkg
+        if (pkg.isEmpty()) {
+            val knownRadioPkgs = listOf(
+                "com.syu.radio", "com.microntek.radio", "com.car.radio", "com.android.fmradio",
+                "com.turing.car.radio", "com.ts.fmradio", "com.tw.radio", "com.yecon.radio",
+                "com.xyauto.radio", "com.autochips.radio", "com.hzb.radio", "com.canbus.radio",
+                "com.forfan.radio", "com.softwinner.fmradio", "com.motor.radio"
+            )
+            val found = knownRadioPkgs.firstOrNull { p ->
+                try { pm.getPackageInfo(p, 0); true } catch (_: Exception) { false }
+            }
+            if (found != null) pkg = found
         }
         if (pkg.isNotEmpty()) {
             runCatching {
-                val intent = getApplication<Application>().packageManager
-                    .getLaunchIntentForPackage(pkg)
+                val intent = pm.getLaunchIntentForPackage(pkg)
                     ?: Intent(Intent.ACTION_MAIN).apply {
                         `package` = pkg
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -807,6 +822,22 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     lastFetchMs = now
                     fetchWeather(loc.latitude, loc.longitude, settings.value.unitSystem.name == "METRIC")
                 }
+            }
+        }
+
+        // Live trip tracking & in-dash navigation route updates
+        viewModelScope.launch {
+            locationMgr.location.filterNotNull().collect { loc ->
+                val fuelType = com.hoopoe.launcher.util.FuelType.fromCode(settings.value.fuelType)
+                val mileage = settings.value.vehicleMileageKmL.toDouble()
+                com.hoopoe.launcher.data.TripLogManager.getInstance(getApplication()).recordGpsPoint(
+                    lat = loc.latitude,
+                    lon = loc.longitude,
+                    speedKmh = loc.speedMps * 3.6f,
+                    fuelType = fuelType,
+                    mileage = mileage
+                )
+                com.hoopoe.launcher.data.NavigationManager.getInstance(getApplication()).onLocationUpdate(loc.latitude, loc.longitude)
             }
         }
     }

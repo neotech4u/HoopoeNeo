@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hoopoe.launcher.data.AppSettings
 import com.hoopoe.launcher.model.AppInfo
+import com.hoopoe.launcher.data.NavigationManager
 import com.hoopoe.launcher.ui.widget.NavigationMapWidget
 import com.hoopoe.launcher.util.LocationData
 import kotlinx.coroutines.flow.StateFlow
@@ -50,6 +51,11 @@ fun NavigationScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val navManager = remember { NavigationManager.getInstance(context) }
+    val location by locationFlow.collectAsState()
+    val curLat = location?.latitude ?: 28.6139
+    val curLon = location?.longitude ?: 77.2090
+
     var searchQuery by remember { mutableStateOf("") }
 
     val contentColor = if (isDayMode) Color(0xFF0F172A) else Color(0xFFF8FAFC)
@@ -57,13 +63,18 @@ fun NavigationScreen(
     val cardBg = if (isDayMode) Color(0xFFFFFFFF).copy(alpha = 0.9f) else Color(0xFF0F141F).copy(alpha = 0.85f)
 
     val poiShortcuts = listOf(
-        NavPoiShortcut("Petrol Pump", "petrol station", Icons.Default.LocalGasStation, Color(0xFFFF9100)),
-        NavPoiShortcut("Mosque / Masjid", "mosque", Icons.Default.Mosque, Color(0xFF00E676)),
-        NavPoiShortcut("Hospital / Clinic", "hospital", Icons.Default.LocalHospital, Color(0xFFFF1744)),
-        NavPoiShortcut("Restaurant / Food", "restaurant", Icons.Default.Restaurant, Color(0xFFFFB300)),
-        NavPoiShortcut("Home", settings.homeAddress.ifEmpty { "home" }, Icons.Default.Home, accent),
-        NavPoiShortcut("Work", settings.workAddress.ifEmpty { "work" }, Icons.Default.Work, Color(0xFF90CAF9))
+        NavPoiShortcut("Petrol Pump", "PETROL", Icons.Default.LocalGasStation, Color(0xFFFF9100)),
+        NavPoiShortcut("Mosque / Masjid", "MOSQUE", Icons.Default.Mosque, Color(0xFF00E676)),
+        NavPoiShortcut("Hospital / Clinic", "HOSPITAL", Icons.Default.LocalHospital, Color(0xFFFF1744)),
+        NavPoiShortcut("Restaurant / Food", "RESTAURANT", Icons.Default.Restaurant, Color(0xFFFFB300)),
+        NavPoiShortcut("Home", settings.homeAddress.ifEmpty { "HOME" }, Icons.Default.Home, accent),
+        NavPoiShortcut("Work", settings.workAddress.ifEmpty { "WORK" }, Icons.Default.Work, Color(0xFF90CAF9))
     )
+
+    fun routeToTarget(query: String) {
+        val target = navManager.selectPoiDestination(query, curLat, curLon)
+        navManager.setDestination(target, curLat, curLon)
+    }
 
     fun launchNavIntent(query: String) {
         val uri = if (query.startsWith("geo:")) {
@@ -170,7 +181,7 @@ fun NavigationScreen(
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = accent, modifier = Modifier.size(18.dp)) },
                 trailingIcon = {
                     if (searchQuery.isNotBlank()) {
-                        IconButton(onClick = { launchNavIntent(searchQuery) }) {
+                        IconButton(onClick = { routeToTarget(searchQuery) }) {
                             Icon(Icons.Default.Directions, "Navigate", tint = accent)
                         }
                     }
@@ -205,7 +216,7 @@ fun NavigationScreen(
                             .clip(RoundedCornerShape(12.dp))
                             .background(cardBg)
                             .border(1.dp, cardBorder, RoundedCornerShape(12.dp))
-                            .clickable { launchNavIntent(poi.query) }
+                            .clickable { routeToTarget(poi.query) }
                             .padding(10.dp)
                     ) {
                         Row(

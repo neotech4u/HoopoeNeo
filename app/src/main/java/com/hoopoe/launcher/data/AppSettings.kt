@@ -154,7 +154,12 @@ data class AppSettings(
     val overspeedThresholdKmh: Float = 80f,
     val autoResumeBluetoothMedia: Boolean = true,
     val homeAddress: String = "",
-    val workAddress: String = ""
+    val workAddress: String = "",
+    val fuelType: String = "PETROL",
+    val vehicleMileageKmL: Float = 19.0f,
+    val manualOdometerKm: Float = 0f,
+    val preferredMusicPackage: String = "",
+    val preferredRadioPackage: String = ""
 )
 
 fun defaultShortcuts() = listOf(

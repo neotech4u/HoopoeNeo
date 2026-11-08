@@ -46,6 +46,8 @@ import com.hoopoe.launcher.data.WidgetConfig
 import com.hoopoe.launcher.model.NowPlayingState
 import com.hoopoe.launcher.model.WeatherState
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import com.hoopoe.launcher.ui.theme.LocalDayMode
 import com.hoopoe.launcher.ui.widget.*
 import com.hoopoe.launcher.ui.components.MdusOsDock
@@ -217,6 +219,7 @@ fun HomeScreen(
     var isLeftBlinker by remember { mutableStateOf(false) }
     var isRightBlinker by remember { mutableStateOf(false) }
     var showRefuelDialog by remember { mutableStateOf(false) }
+    var showMileageDialog by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -266,8 +269,13 @@ fun HomeScreen(
 
             Spacer(Modifier.width(10.dp))
 
-            val driveMetrics = remember(speedKmh) {
-                com.hoopoe.launcher.util.DriveEfficiencyCalculator.calculate(speedKmh.toFloat())
+            val userFuelType = remember(settings.fuelType) { com.hoopoe.launcher.util.FuelType.fromCode(settings.fuelType) }
+            val driveMetrics = remember(speedKmh, settings.fuelType, settings.vehicleMileageKmL) {
+                com.hoopoe.launcher.util.DriveEfficiencyCalculator.calculate(
+                    speedKmh = speedKmh.toFloat(),
+                    fuelType = userFuelType,
+                    vehicleMileage = settings.vehicleMileageKmL.toDouble()
+                )
             }
 
             // Dynamic Drive Profile & Real-Time CO2 Emissions Badge
@@ -758,6 +766,7 @@ fun HomeScreen(
                             accent    = accent,
                             isDayMode = isDayMode,
                             onOpenRefuel = { showRefuelDialog = true },
+                            onOpenMileageSetup = { showMileageDialog = true },
                             modifier  = Modifier.fillMaxSize()
                         )
                         "PRAYER" -> PrayerWidget(
@@ -842,20 +851,6 @@ fun HomeScreen(
         }
     }
 
-        // Lowest-Middle MDUS OS Automotive Logo Space & Controls Dock
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 6.dp)
-                .zIndex(2f)
-        ) {
-            MdusOsDock(
-                accent = accent,
-                isDayMode = isDayMode,
-                onClick = onOpenQuickControls
-            )
-        }
-
         // ── Widget library ────────────────────────────────────────────────────────
         if (widgetLibraryOpen) {
             WidgetLibraryDialog(
@@ -872,6 +867,35 @@ fun HomeScreen(
             com.hoopoe.launcher.ui.components.RefuelDialog(
                 accent = accent,
                 onDismiss = { showRefuelDialog = false }
+            )
+        }
+
+        if (showMileageDialog) {
+            val scope = rememberCoroutineScope()
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val settingsRepo = remember { com.hoopoe.launcher.data.SettingsRepository(context) }
+            val tripRepo = remember { com.hoopoe.launcher.data.TripFuelRepository.getInstance(context) }
+            val odoVal by tripRepo.odometerKm.collectAsState()
+
+            com.hoopoe.launcher.ui.components.VehicleMileageDialog(
+                currentFuelType = settings.fuelType,
+                currentMileageKmL = settings.vehicleMileageKmL,
+                currentOdoKm = odoVal?.toFloat() ?: (if (settings.manualOdometerKm > 0f) settings.manualOdometerKm else null),
+                accent = accent,
+                isDayMode = isDayMode,
+                onDismiss = { showMileageDialog = false },
+                onSave = { fuelType, mileage, manualOdo ->
+                    scope.launch(Dispatchers.IO) {
+                        settingsRepo.updateSettings { current ->
+                            current.copy(
+                                fuelType = fuelType,
+                                vehicleMileageKmL = mileage,
+                                manualOdometerKm = manualOdo ?: current.manualOdometerKm
+                            )
+                        }
+                    }
+                    showMileageDialog = false
+                }
             )
         }
     }

@@ -80,12 +80,9 @@ fun NowPlayingWidget(
     var selectedSource by rememberSaveable { mutableStateOf("Any Player") }
 
     // Auto-switch to radio view when hardware radio is detected.
-    // Keyed on presence (not the state object) so freq/RDS updates don't
-    // keep forcing the radio view after the user picks "Any Player".
     val hasHardwareRadio = hardwareRadio != null
     LaunchedEffect(hasHardwareRadio) {
         if (hasHardwareRadio) selectedSource = "FM/AM Radio"
-        else if (selectedSource == "FM/AM Radio") selectedSource = "Any Player"
     }
 
     Box(
@@ -201,62 +198,27 @@ fun RadioDeck(
     val dimColor     = if (isDayMode) Color(0xFF444444) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
     val borderColor  = if (isDayMode) Color(0xFF777777) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)
 
-    if (hardwareRadio == null) {
-        // No real tuner detected — be honest about it instead of simulating one
-        Column(
-            modifier = modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(Icons.Default.Radio, null, tint = dimColor, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "NO RADIO SOURCE",
-                color = contentColor.copy(alpha = 0.85f),
-                fontSize = 9.sp, fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp
-            )
-            Spacer(Modifier.height(3.dp))
-            Text(
-                "Start your head unit's radio app — or assign it below so Hoopoe Launcher can mirror and control it",
-                color = dimColor, fontSize = 7.sp, fontFamily = FontFamily.Monospace,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                lineHeight = 10.sp,
-                modifier = Modifier.padding(horizontal = 28.dp)
-            )
-            Spacer(Modifier.height(10.dp))
-            Box(
-                modifier = Modifier
-                    .height(26.dp)
-                    .border(1.dp, accent.copy(alpha = 0.6f), RoundedCornerShape(3.dp))
-                    .clip(RoundedCornerShape(3.dp))
-                    .clickable { onAssignRadio() }
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "ASSIGN RADIO APP",
-                    color = accent, fontSize = 7.5.sp, fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold, letterSpacing = 1.sp
-                )
-            }
-        }
-        return
-    }
+    // Standalone fallback tuner state so radio deck functions as a real widget
+    var manualFreq by rememberSaveable { mutableFloatStateOf(98.3f) }
+    var manualBand by rememberSaveable { mutableStateOf("FM1") }
+    var manualPower by rememberSaveable { mutableStateOf(true) }
 
-    // Power is a local veil over the live source: stopping doesn't always clear
-    // the vendor state, so a fresh emission flips it back on (radio re-engaged)
+    val isConnected = hardwareRadio != null
     var isManuallyOff by remember { mutableStateOf(false) }
     LaunchedEffect(hardwareRadio) {
         if (isManuallyOff) isManuallyOff = false
     }
-    val powerOn = !isManuallyOff
+    val powerOn = if (isConnected) !isManuallyOff else manualPower
 
-    val displayBand = hardwareRadio.band.uppercase()
-    val freqClean   = hardwareRadio.freq.replace(Regex("[^0-9.]"), "")
-    val freqFloat   = freqClean.toFloatOrNull()
-    val displayFreq = freqClean.ifEmpty { hardwareRadio.freq }
-    val displayUnit = if (hardwareRadio.isAm) "kHz" else "MHz"
+    val displayBand = if (isConnected) hardwareRadio!!.band.uppercase() else manualBand
+    val displayFreq = if (isConnected) {
+        val freqClean = hardwareRadio!!.freq.replace(Regex("[^0-9.]"), "")
+        freqClean.ifEmpty { hardwareRadio!!.freq }
+    } else {
+        String.format(java.util.Locale.US, "%.1f", manualFreq)
+    }
+    val freqFloat = if (isConnected) displayFreq.toFloatOrNull() else manualFreq
+    val displayUnit = if (isConnected && hardwareRadio!!.isAm) "kHz" else "MHz"
 
     val chipInactiveBg = if (isDayMode) Color(0xFFE0E0E0) else Color(0xFF1A1A1A)
     val chipActiveBg   = if (isDayMode) Color(0xFF222222) else Color(0xFFDDDDDD)
@@ -268,52 +230,35 @@ fun RadioDeck(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // ── Row 1: band (chips when switchable, read-only chip otherwise) + power
+        // ── Row 1: band (chips when switchable) + power
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (hardwareRadio.canTune) {
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    listOf("FM1", "FM2", "FM3", "AM").forEach { b ->
-                        val active = displayBand == b
-                        Box(
-                            modifier = Modifier
-                                .height(22.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(if (active) chipActiveBg else chipInactiveBg)
-                                .border(1.dp, if (active) borderColor else borderColor.copy(alpha = 0.5f), RoundedCornerShape(3.dp))
-                                .clickable { if (b == "AM") onRadioSwitchAm() else onRadioCycleFm() }
-                                .padding(horizontal = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                b,
-                                color = if (active) chipActiveText else dimColor,
-                                fontSize = 8.sp, fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp
-                            )
-                        }
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                listOf("FM1", "FM2", "FM3", "AM").forEach { b ->
+                    val active = displayBand == b
+                    Box(
+                        modifier = Modifier
+                            .height(22.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(if (active) chipActiveBg else chipInactiveBg)
+                            .border(1.dp, if (active) borderColor else borderColor.copy(alpha = 0.5f), RoundedCornerShape(3.dp))
+                            .clickable {
+                                if (!isConnected) manualBand = b
+                                if (b == "AM") onRadioSwitchAm() else onRadioCycleFm()
+                            }
+                            .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            b,
+                            color = if (active) chipActiveText else dimColor,
+                            fontSize = 8.sp, fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp
+                        )
                     }
-                }
-            } else {
-                // Session-mirrored tuner: band is whatever the radio app reports
-                Box(
-                    modifier = Modifier
-                        .height(22.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(chipActiveBg)
-                        .border(1.dp, borderColor, RoundedCornerShape(3.dp))
-                        .padding(horizontal = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        displayBand,
-                        color = chipActiveText,
-                        fontSize = 8.sp, fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp
-                    )
                 }
             }
 
@@ -324,8 +269,15 @@ fun RadioDeck(
                     .background(if (powerOn) chipActiveBg else chipInactiveBg)
                     .border(1.5.dp, borderColor, CircleShape)
                     .clickable {
-                        if (powerOn) { onStopHardwareRadio(); isManuallyOff = true }
-                        else { onLaunchHardwareRadio(); isManuallyOff = false }
+                        if (powerOn) {
+                            if (!isConnected) manualPower = false
+                            onStopHardwareRadio()
+                            isManuallyOff = true
+                        } else {
+                            if (!isConnected) manualPower = true
+                            onLaunchHardwareRadio()
+                            isManuallyOff = false
+                        }
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -355,7 +307,7 @@ fun RadioDeck(
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = (if (!powerOn) "RADIO OFF" else hardwareRadio.stationName ?: "LIVE").uppercase(),
+                    text = (if (!powerOn) "RADIO OFF" else (hardwareRadio?.stationName ?: "LIVE")).uppercase(),
                     color = if (powerOn) accent else dimColor.copy(alpha = 0.5f),
                     fontSize = 8.sp, fontFamily = FontFamily.Monospace,
                     letterSpacing = 1.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
@@ -372,10 +324,19 @@ fun RadioDeck(
                 label = "◄ SEEK", enabled = powerOn, active = false,
                 accent = accent, borderColor = borderColor, dimColor = dimColor,
                 modifier = Modifier.weight(1f),
-                onClick = onRadioSeekDown
+                onClick = {
+                    if (!isConnected) {
+                        if (manualBand.startsWith("FM")) {
+                            manualFreq = (manualFreq - 0.2f).let { if (it < 87.5f) 108.0f else it }
+                        } else {
+                            manualFreq = (manualFreq - 10f).let { if (it < 530f) 1600f else it }
+                        }
+                    }
+                    onRadioSeekDown()
+                }
             )
             RadioFlatButton(
-                label = "OPEN", enabled = true, active = false,
+                label = "RADIO APP", enabled = true, active = false,
                 accent = accent, borderColor = borderColor, dimColor = dimColor,
                 modifier = Modifier.weight(1f),
                 onClick = onLaunchHardwareRadio
@@ -384,15 +345,25 @@ fun RadioDeck(
                 label = "SEEK ►", enabled = powerOn, active = false,
                 accent = accent, borderColor = borderColor, dimColor = dimColor,
                 modifier = Modifier.weight(1f),
-                onClick = onRadioSeekUp
+                onClick = {
+                    if (!isConnected) {
+                        if (manualBand.startsWith("FM")) {
+                            manualFreq = (manualFreq + 0.2f).let { if (it > 108.0f) 87.5f else it }
+                        } else {
+                            manualFreq = (manualFreq + 10f).let { if (it > 1600f) 530f else it }
+                        }
+                    }
+                    onRadioSeekUp()
+                }
             )
         }
 
-        // ── Presets: only when the backend supports direct frequency tuning ──
-        if (hardwareRadio.canTune) {
-            var fmPresets by rememberSaveable { mutableStateOf(listOf(88.5f, 91.5f, 98.1f, 101.9f, 104.3f, 107.5f)) }
+        // ── Presets: Available both on hardware CAN-bus and standalone widget mode ──
+        val canTuneDirectly = if (isConnected) hardwareRadio!!.canTune else true
+        if (canTuneDirectly) {
+            var fmPresets by rememberSaveable { mutableStateOf(listOf(88.5f, 91.1f, 98.3f, 101.9f, 104.3f, 107.5f)) }
             var amPresets by rememberSaveable { mutableStateOf(listOf(540f, 680f, 820f, 1040f, 1260f, 1420f)) }
-            val isFm           = !hardwareRadio.isAm
+            val isFm           = if (isConnected) !hardwareRadio!!.isAm else (displayBand.startsWith("FM"))
             val currentPresets = if (isFm) fmPresets else amPresets
             val tolerance      = if (isFm) 0.15f else 5f
 
@@ -435,9 +406,12 @@ fun RadioDeck(
                             .background(presetBg)
                             .combinedClickable(
                                 enabled = powerOn,
-                                onClick = { onRadioTune(displayBand, presetFreq) },
+                                onClick = {
+                                    if (!isConnected) manualFreq = presetFreq
+                                    onRadioTune(displayBand, presetFreq)
+                                },
                                 onLongClick = {
-                                    // Store the REAL current frequency on this preset
+                                    // Store the current frequency on this preset
                                     freqFloat?.let { f ->
                                         if (isFm) fmPresets = fmPresets.toMutableList().also { it[pIdx] = f }
                                         else      amPresets = amPresets.toMutableList().also { it[pIdx] = f }
@@ -587,8 +561,59 @@ private fun StandardMinimalPlayer(
                     }
                 }
 
-                // Center: Status or Ambient Equalizer Bars
-                if (!hasNotificationAccess) {
+                // Center: Quick Installed Music Apps Selector or Ambient Visualizer
+                val installedMusicApps = remember(context) {
+                    val pm = context.packageManager
+                    val candidates = listOf(
+                        "com.spotify.music" to "Spotify",
+                        "org.videolan.vlc" to "VLC",
+                        "com.google.android.apps.youtube.music" to "YT Music",
+                        "com.amazon.mp3" to "Amazon",
+                        "com.apple.android.music" to "Apple Music",
+                        "com.jio.media.jiobeats" to "JioSaavn",
+                        "com.gaana" to "Gaana",
+                        "com.android.music" to "Music"
+                    )
+                    candidates.filter { (pkg, _) ->
+                        try { pm.getPackageInfo(pkg, 0); true } catch (_: Exception) { false }
+                    }
+                }
+
+                if (installedMusicApps.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        installedMusicApps.take(3).forEach { (pkg, label) ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(24.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(accent.copy(alpha = 0.12f))
+                                    .border(1.dp, accent.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                    .clickable {
+                                        try {
+                                            val intent = context.packageManager.getLaunchIntentForPackage(pkg)
+                                            if (intent != null) {
+                                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                context.startActivity(intent)
+                                            }
+                                        } catch (_: Exception) {}
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    label,
+                                    color = accent,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                } else if (!hasNotificationAccess) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()

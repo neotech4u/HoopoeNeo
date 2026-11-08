@@ -446,10 +446,19 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         vm.stopLocationUpdates()
+        val s = vm.settings.value
+        val fuelType = com.hoopoe.launcher.util.FuelType.fromCode(s.fuelType)
+        val mileage = s.vehicleMileageKmL.toDouble()
+        com.hoopoe.launcher.data.TripLogManager.getInstance(this).finishAppSession(
+            reason = "App Stop",
+            vehicleMileage = mileage,
+            fuelType = fuelType
+        )
     }
 
     override fun onStart() {
         super.onStart()
         vm.startLocationUpdates()
+        com.hoopoe.launcher.data.TripLogManager.getInstance(this).startAppSession()
     }
 }

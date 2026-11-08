@@ -78,6 +78,11 @@ class SettingsRepository(private val context: Context) {
         val AUTO_BT_MEDIA         = booleanPreferencesKey("auto_bt_media")
         val HOME_ADDRESS          = stringPreferencesKey("home_address")
         val WORK_ADDRESS          = stringPreferencesKey("work_address")
+        val FUEL_TYPE             = stringPreferencesKey("fuel_type")
+        val VEHICLE_MILEAGE       = floatPreferencesKey("vehicle_mileage")
+        val MANUAL_ODOMETER       = floatPreferencesKey("manual_odometer")
+        val PREF_MUSIC_PKG        = stringPreferencesKey("pref_music_pkg")
+        val PREF_RADIO_PKG        = stringPreferencesKey("pref_radio_pkg")
     }
 
     val settingsFlow: Flow<AppSettings> = context.dataStore.data
@@ -173,7 +178,12 @@ class SettingsRepository(private val context: Context) {
             overspeedThresholdKmh   = prefs[Keys.OVERSPEED_THRESHOLD] ?: defaults.overspeedThresholdKmh,
             autoResumeBluetoothMedia = prefs[Keys.AUTO_BT_MEDIA] ?: defaults.autoResumeBluetoothMedia,
             homeAddress      = prefs[Keys.HOME_ADDRESS] ?: defaults.homeAddress,
-            workAddress      = prefs[Keys.WORK_ADDRESS] ?: defaults.workAddress
+            workAddress      = prefs[Keys.WORK_ADDRESS] ?: defaults.workAddress,
+            fuelType         = prefs[Keys.FUEL_TYPE] ?: defaults.fuelType,
+            vehicleMileageKmL = prefs[Keys.VEHICLE_MILEAGE] ?: defaults.vehicleMileageKmL,
+            manualOdometerKm = prefs[Keys.MANUAL_ODOMETER] ?: defaults.manualOdometerKm,
+            preferredMusicPackage = prefs[Keys.PREF_MUSIC_PKG] ?: defaults.preferredMusicPackage,
+            preferredRadioPackage = prefs[Keys.PREF_RADIO_PKG] ?: defaults.preferredRadioPackage
         )
     }
 
@@ -245,6 +255,11 @@ class SettingsRepository(private val context: Context) {
         prefs[Keys.AUTO_BT_MEDIA]         = s.autoResumeBluetoothMedia
         prefs[Keys.HOME_ADDRESS]          = s.homeAddress
         prefs[Keys.WORK_ADDRESS]          = s.workAddress
+        prefs[Keys.FUEL_TYPE]             = s.fuelType
+        prefs[Keys.VEHICLE_MILEAGE]       = s.vehicleMileageKmL
+        prefs[Keys.MANUAL_ODOMETER]       = s.manualOdometerKm
+        prefs[Keys.PREF_MUSIC_PKG]        = s.preferredMusicPackage
+        prefs[Keys.PREF_RADIO_PKG]        = s.preferredRadioPackage
     }
 
     suspend fun resetToDefaults() {

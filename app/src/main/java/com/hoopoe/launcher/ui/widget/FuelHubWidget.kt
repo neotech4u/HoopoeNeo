@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,31 +24,48 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hoopoe.launcher.data.TripFuelRepository
+import com.hoopoe.launcher.data.TripLogManager
+import com.hoopoe.launcher.data.SettingsRepository
+import com.hoopoe.launcher.util.FuelType
+import java.util.Locale
 
 @Composable
 fun FuelHubWidget(
     accent: Color,
     isDayMode: Boolean = false,
     onOpenRefuel: () -> Unit,
+    onOpenMileageSetup: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val repo = remember { TripFuelRepository.getInstance(context) }
+    val tripLogManager = remember { TripLogManager.getInstance(context) }
+    val settingsRepo = remember { SettingsRepository(context) }
+    val settings by settingsRepo.settingsFlow.collectAsState(initial = com.hoopoe.launcher.data.AppSettings())
+
     val isObdOnline by repo.isObdOnline.collectAsState()
     val fuelPct by repo.fuelPercent.collectAsState()
     val trip by repo.currentTrip.collectAsState()
     val odoKm by repo.odometerKm.collectAsState()
     val fuelPrice by repo.fuelPricePerLiter.collectAsState()
 
+    // Real-time trip session (turn on to turn off)
+    val activeTripDistKm by tripLogManager.currentActiveRideDistance.collectAsState()
+    val activeTripDurationMins by tripLogManager.currentTripDurationMins.collectAsState()
+    val activeTripCo2Grams by tripLogManager.currentTripCo2Grams.collectAsState()
+
     var activeTab by remember { mutableStateOf("LIVE_TRIP") } // "LIVE_TRIP" or "FUEL_MGR"
     val contentColor = if (isDayMode) Color(0xFF0F172A) else Color(0xFFF8FAFC)
     val cardBorder = if (isDayMode) Color(0xFFCBD5E1) else Color(0xFF243048)
     val cardBg = if (isDayMode) Color(0xFFFFFFFF).copy(alpha = 0.9f) else Color(0xFF0F141F).copy(alpha = 0.85f)
 
+    val currentFuelType = FuelType.fromCode(settings.fuelType)
+    val currentMileage = settings.vehicleMileageKmL.toDouble()
+
     // Authentic tank calculations (Dzire 2020: 37.0 Liters capacity)
     val remainingLiters = fuelPct?.let { (it / 100f) * 37.0f }
-    val estRangeKm = if (remainingLiters != null && trip.economyKmL > 0.0) (remainingLiters * trip.economyKmL).toInt() else null
-    val tripCost = if (trip.economyKmL > 0.0) (trip.distanceKm / trip.economyKmL) * fuelPrice else 0.0
+    val estRangeKm = if (remainingLiters != null && currentMileage > 0.0) (remainingLiters * currentMileage).toInt() else null
+    val tripCost = if (currentMileage > 0.0) (activeTripDistKm / currentMileage) * fuelPrice else 0.0
 
     Column(
         modifier = modifier
@@ -72,8 +90,8 @@ fun FuelHubWidget(
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = "TELEMETRY HUB",
-                    color = contentColor.copy(alpha = 0.5f),
+                    text = "TRIP & FUEL HUB",
+                    color = contentColor.copy(alpha = 0.6f),
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -89,7 +107,7 @@ fun FuelHubWidget(
                     .padding(2.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                listOf("LIVE_TRIP" to "LIVE TRIP", "FUEL_MGR" to "FUEL MGR").forEach { (key, label) ->
+                listOf("LIVE_TRIP" to "CURRENT RIDE", "FUEL_MGR" to "FUEL & CO2").forEach { (key, label) ->
                     val isSelected = activeTab == key
                     Box(
                         modifier = Modifier
@@ -115,7 +133,7 @@ fun FuelHubWidget(
 
         // Center Content Body
         if (activeTab == "LIVE_TRIP") {
-            // ── Live Trip View ──────────────────────────────────────────
+            // ── Current Ride View ──────────────────────────────────────────
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -127,7 +145,7 @@ fun FuelHubWidget(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Distance
+                    // Current Trip Distance (Calculated between turn on & turn off)
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -137,13 +155,13 @@ fun FuelHubWidget(
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
                         Column {
-                            Text("TRIP DISTANCE", color = contentColor.copy(alpha = 0.45f), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                            Text("RIDE DISTANCE", color = contentColor.copy(alpha = 0.45f), fontSize = 8.sp, fontWeight = FontWeight.Bold)
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Text(
-                                    text = "%.1f".format(trip.distanceKm),
+                                    text = String.format(Locale.US, "%.1f", activeTripDistKm),
                                     color = contentColor,
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.ExtraBold,
                                     fontFamily = FontFamily.Monospace
                                 )
                                 Spacer(Modifier.width(3.dp))
@@ -152,27 +170,35 @@ fun FuelHubWidget(
                         }
                     }
 
-                    // Economy
+                    // Economy / Mileage
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
                             .background(Color.White.copy(alpha = 0.03f))
                             .border(1.dp, cardBorder, RoundedCornerShape(10.dp))
+                            .clickable { onOpenMileageSetup() }
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
                         Column {
-                            Text("AVG ECONOMY", color = contentColor.copy(alpha = 0.45f), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("CAR MILEAGE", color = contentColor.copy(alpha = 0.45f), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                Icon(Icons.Default.Tune, null, tint = accent, modifier = Modifier.size(11.dp))
+                            }
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Text(
-                                    text = "%.1f".format(trip.economyKmL),
+                                    text = String.format(Locale.US, "%.1f", currentMileage),
                                     color = Color(0xFF00E676),
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.ExtraBold,
                                     fontFamily = FontFamily.Monospace
                                 )
                                 Spacer(Modifier.width(3.dp))
-                                Text("KM/L", color = contentColor.copy(alpha = 0.6f), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("KM/${currentFuelType.unit}", color = contentColor.copy(alpha = 0.6f), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -182,7 +208,7 @@ fun FuelHubWidget(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Cost
+                    // Estimated Trip CO2 Output (Standard formula)
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -192,18 +218,23 @@ fun FuelHubWidget(
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
                         Column {
-                            Text("EST. TRIP COST", color = contentColor.copy(alpha = 0.45f), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
-                            Text(
-                                text = "₹%.1f".format(tripCost),
-                                color = contentColor,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
+                            Text("TRIP CO2 OUTPUT", color = contentColor.copy(alpha = 0.45f), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                val co2Kg = activeTripCo2Grams / 1000.0
+                                Text(
+                                    text = if (co2Kg < 10.0) String.format(Locale.US, "%.2f", co2Kg) else String.format(Locale.US, "%.1f", co2Kg),
+                                    color = Color(0xFF00E5FF),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(Modifier.width(3.dp))
+                                Text("KG CO2", color = contentColor.copy(alpha = 0.6f), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
 
-                    // Instant Rate
+                    // Trip Duration
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -213,14 +244,18 @@ fun FuelHubWidget(
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
                         Column {
-                            Text("INSTANT RATE", color = contentColor.copy(alpha = 0.45f), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
-                            Text(
-                                text = if (isObdOnline) "OBD LIVE" else "NA",
-                                color = accent,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
+                            Text("RIDE DURATION", color = contentColor.copy(alpha = 0.45f), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    text = "$activeTripDurationMins",
+                                    color = accent,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(Modifier.width(3.dp))
+                                Text("MIN", color = contentColor.copy(alpha = 0.6f), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -241,7 +276,7 @@ fun FuelHubWidget(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("PETROL TANK", color = contentColor.copy(alpha = 0.5f), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Text("${currentFuelType.code} TANK", color = contentColor.copy(alpha = 0.5f), fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         val tankPctText = fuelPct?.let { "%.0f%%".format(it) } ?: "NA"
                         Text(
                             text = tankPctText,
@@ -301,51 +336,76 @@ fun FuelHubWidget(
                     }
                 }
 
-                // Quick Refuel Trigger Button
-                Button(
-                    onClick = {
-                        TripFuelRepository.playTactileBeep()
-                        onOpenRefuel()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(46.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = accent),
-                    shape = RoundedCornerShape(12.dp)
+                // Dual Action Buttons: Refuel Log + Mileage / Fuel Type Setup
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = null,
-                        tint = Color(0xFF07090E),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "+ QUICK REFUEL",
-                        color = Color(0xFF07090E),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
+                    Button(
+                        onClick = {
+                            TripFuelRepository.playTactileBeep()
+                            onOpenRefuel()
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = accent),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.Add, null, tint = Color(0xFF07090E), modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "LOG REFUEL",
+                            color = Color(0xFF07090E),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            TripFuelRepository.playTactileBeep()
+                            onOpenMileageSetup()
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.Tune, null, tint = accent, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "MILEAGE",
+                            color = contentColor,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
 
-        // Bottom Sub-Footer: Connection Source
+        // Bottom Sub-Footer: Connection Source & Odometer
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val odoDisplay = when {
+                odoKm != null -> "ODO: %.0f KM".format(odoKm)
+                settings.manualOdometerKm > 0f -> "ODO: %.0f KM (USER)".format(settings.manualOdometerKm)
+                else -> "ODO: NA"
+            }
             Text(
-                text = "SOURCE: ${trip.source}",
-                color = contentColor.copy(alpha = 0.4f),
+                text = "FUEL: ${currentFuelType.code} • ${String.format(Locale.US, "%.1f", currentMileage)} KM/${currentFuelType.unit}",
+                color = contentColor.copy(alpha = 0.5f),
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "ODO: %.0f KM".format(odoKm),
-                color = contentColor.copy(alpha = 0.6f),
+                text = odoDisplay,
+                color = accent,
                 fontSize = 8.5.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace
