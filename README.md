@@ -57,10 +57,10 @@ HOOPOE now operates as a **Standalone Automotive Companion Application**. It del
 - **3 Layout Presets:** Standard Cockpit (RHD), Minimal Focus HUD, and Tri-Pane Telemetry.
 
 ### 🗺️ Module 2: Navigation Centre
-- **1-Touch Destination Routing:** Instant search and navigation intents to Google Maps, OsmAnd, or Organic Maps.
+- **1-Touch Destination Routing:** Destination searches and petrol, mosque, hospital, and restaurant shortcuts open driving directions in Google Maps or a compatible browser.
 - **Quick POIs:** One-tap routes to nearby Petrol Stations, Mosques, Hospitals, and Restaurants.
 - **Home & Work Shortcuts:** Direct commuting routes configured in preferences.
-- **Embedded Map View:** OpenStreetMap canvas for visual context. The in-app connector line is illustrative; road-following routes and turn guidance are not implemented.
+- **Embedded Map View:** OpenStreetMap canvas follows the live vehicle location. Destination searches hand off driving directions to Google Maps; HOOPOE does not calculate turn-by-turn routes.
 
 ### 🎵 Module 3: Media Centre
 - **Universal Playback Controls:** Tactile 48dp+ buttons for Play/Pause, Next Track, Previous Track, and Progress Scrubbing.
