@@ -7,7 +7,7 @@
   [![Platform: Android](https://img.shields.io/badge/Platform-Android%2010%2B%20%28API%2029%2B%29-green.svg)](https://developer.android.com)
   [![UI: Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-purple.svg)](https://developer.android.com/jetpack/compose)
   [![Architecture: Standalone App](https://img.shields.io/badge/Architecture-Standalone%20Companion-gold.svg)](#-standalone-companion-architecture)
-  [![Optimized for 2GB RAM](https://img.shields.io/badge/RAM-2GB%20Optimized-orange.svg)](#-optimizations-for-2-gb-ram--aftermarket-socs)
+  [![Target profile: 2GB RAM](https://img.shields.io/badge/Target%20profile-2GB%20RAM-orange.svg)](#-hardware--vehicle-compatibility)
 </div>
 
 ---
@@ -69,7 +69,7 @@ HOOPOE now operates as a **Standalone Automotive Companion Application**. It del
 
 ### 🔧 Module 4: Vehicle Information & Diagnostics
 - **GPS vs. ECU Data:** Strictly isolates GPS-derived telemetry (speed, heading, altitude) from authentic vehicle ECU data.
-- **Bluetooth OBD-II (ELM327):** Real SPP RFCOMM engine querying RPM, coolant temperature, throttle position, and battery voltage, with a DTC trouble-code scanner.
+- **Bluetooth OBD-II (ELM327):** SPP RFCOMM integration for RPM, speed, coolant temperature, fuel level, battery voltage, and DTC reads; supported values depend on the adapter and vehicle.
 - **TPMS screen:** Provides a four-wheel layout. Live sensor readings and calibration are not implemented; values remain unavailable until a compatible receiver integration is added.
 
 ### 🕌 Module 5: Islamic Travel Companion
