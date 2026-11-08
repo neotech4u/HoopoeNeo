@@ -21,6 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.provider.Settings
+import com.hoopoe.launcher.service.MediaListenerService
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +53,9 @@ fun MediaScreen(
     val contentColor = if (isDayMode) Color(0xFF0F172A) else Color(0xFFF8FAFC)
     val cardBorder = if (isDayMode) Color(0xFFCBD5E1) else Color(0xFF243048)
     val cardBg = if (isDayMode) Color(0xFFFFFFFF).copy(alpha = 0.9f) else Color(0xFF0F141F).copy(alpha = 0.85f)
+
+    val context = LocalContext.current
+    val mediaAccessEnabled by MediaListenerService.isConnected.collectAsState()
 
     var activeSourceTab by remember { mutableStateOf(if (hardwareRadio != null) "RADIO" else "NOW_PLAYING") }
 
@@ -228,6 +234,27 @@ fun MediaScreen(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (activeSourceTab == "NOW_PLAYING" && nowPlaying == null) {
+                    if (!mediaAccessEnabled) {
+                        TextButton(
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.NotificationsActive, null, tint = accent)
+                            Spacer(Modifier.width(6.dp))
+                            Text("ENABLE MEDIA ACCESS", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Text(
+                            "Start playback in a media app to connect its controls.",
+                            color = contentColor.copy(alpha = 0.55f),
+                            fontSize = 11.sp
+                        )
+                    }
+                }
             }
 
             // Tactile 64dp+ Master In-Car Transport Controls
