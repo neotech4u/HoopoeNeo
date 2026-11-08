@@ -112,20 +112,20 @@ fun MediaScreen(
                     }
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        text = hardwareRadio?.band ?: "FM1",
+                        text = hardwareRadio?.band ?: "RADIO UNAVAILABLE",
                         color = accent,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp
                     )
                     Text(
-                        text = (hardwareRadio?.freq ?: "91.1") + " MHz",
+                        text = hardwareRadio?.freq?.let { "$it MHz" } ?: "—",
                         color = contentColor,
                         fontSize = 36.sp,
                         fontWeight = FontWeight.ExtraBold
                     )
                     Text(
-                        text = hardwareRadio?.stationName ?: "STEREO LIVE TUNER",
+                        text = hardwareRadio?.stationName ?: "No compatible tuner connected",
                         color = contentColor.copy(alpha = 0.6f),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
@@ -208,12 +208,12 @@ fun MediaScreen(
             // Track Information
             Column(modifier = Modifier.fillMaxWidth()) {
                 val title = if (activeSourceTab == "RADIO") {
-                    hardwareRadio?.display ?: "FM Radio Tuner"
+                    hardwareRadio?.display ?: "Radio unavailable"
                 } else {
                     nowPlaying?.title?.ifEmpty { "Ready to Play" } ?: "Select Media Source"
                 }
                 val artist = if (activeSourceTab == "RADIO") {
-                    hardwareRadio?.stationName ?: "Broadcast Receiver"
+                    hardwareRadio?.stationName ?: "Connect a compatible radio tuner"
                 } else {
                     nowPlaying?.artist?.ifEmpty { "Bluetooth / Streaming" } ?: "Tap app shortcut to launch"
                 }
@@ -268,6 +268,7 @@ fun MediaScreen(
                 // Prev
                 IconButton(
                     onClick = { if (activeSourceTab == "RADIO") onRadioSeekDown() else onPrev() },
+                    enabled = if (activeSourceTab == "RADIO") hardwareRadio != null else nowPlaying != null,
                     modifier = Modifier.size(56.dp)
                 ) {
                     Icon(Icons.Default.SkipPrevious, "Previous", tint = contentColor, modifier = Modifier.size(34.dp))
@@ -281,7 +282,7 @@ fun MediaScreen(
                         .size(72.dp)
                         .clip(CircleShape)
                         .background(accent)
-                        .clickable { onPlayPause() },
+                        .clickable(enabled = if (activeSourceTab == "RADIO") hardwareRadio != null else nowPlaying != null) { onPlayPause() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -297,6 +298,7 @@ fun MediaScreen(
                 // Next
                 IconButton(
                     onClick = { if (activeSourceTab == "RADIO") onRadioSeekUp() else onNext() },
+                    enabled = if (activeSourceTab == "RADIO") hardwareRadio != null else nowPlaying != null,
                     modifier = Modifier.size(56.dp)
                 ) {
                     Icon(Icons.Default.SkipNext, "Next", tint = contentColor, modifier = Modifier.size(34.dp))
@@ -316,7 +318,7 @@ fun MediaScreen(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(cardBg)
                                 .border(1.dp, cardBorder, RoundedCornerShape(10.dp))
-                                .clickable {
+                                .clickable(enabled = hardwareRadio != null) {
                                     if (band == "AM") onRadioSwitchAm() else onRadioCycleFm()
                                 }
                                 .padding(vertical = 8.dp),
