@@ -15,12 +15,12 @@ import java.io.OutputStream
 import java.util.UUID
 
 data class ObdLiveTelemetry(
-    val rpm: Int = 0,
-    val speedKmh: Int = 0,
-    val coolantTempC: Int = 0,
-    val fuelLevelPct: Float = 0f,
-    val engineLoadPct: Float = 0f,
-    val batteryVoltage: Float = 0f,
+    val rpm: Int? = null,
+    val speedKmh: Int? = null,
+    val coolantTempC: Int? = null,
+    val fuelLevelPct: Float? = null,
+    val engineLoadPct: Float? = null,
+    val batteryVoltage: Float? = null,
     val dtcCodes: List<String> = emptyList(),
     val connectionState: ObdConnectionState = ObdConnectionState.DISCONNECTED,
     val statusMessage: String = "OBD-II Standalone"
@@ -197,41 +197,41 @@ class ObdManager private constructor(private val context: Context) {
         return sb.toString().trim()
     }
 
-    private fun parseRpm(resp: String): Int {
+    private fun parseRpm(resp: String): Int? {
         val cleaned = resp.replace(" ", "")
         val idx = cleaned.indexOf("410C")
         if (idx >= 0 && cleaned.length >= idx + 8) {
-            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: 0
-            val b = cleaned.substring(idx + 6, idx + 8).toIntOrNull(16) ?: 0
+            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: return null
+            val b = cleaned.substring(idx + 6, idx + 8).toIntOrNull(16) ?: return null
             return ((a * 256) + b) / 4
         }
         return _telemetry.value.rpm
     }
 
-    private fun parseSpeed(resp: String): Int {
+    private fun parseSpeed(resp: String): Int? {
         val cleaned = resp.replace(" ", "")
         val idx = cleaned.indexOf("410D")
         if (idx >= 0 && cleaned.length >= idx + 6) {
-            return cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: 0
+            return cleaned.substring(idx + 4, idx + 6).toIntOrNull(16)
         }
         return _telemetry.value.speedKmh
     }
 
-    private fun parseCoolant(resp: String): Int {
+    private fun parseCoolant(resp: String): Int? {
         val cleaned = resp.replace(" ", "")
         val idx = cleaned.indexOf("4105")
         if (idx >= 0 && cleaned.length >= idx + 6) {
-            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: 0
+            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: return null
             return a - 40
         }
         return _telemetry.value.coolantTempC
     }
 
-    private fun parseFuel(resp: String): Float {
+    private fun parseFuel(resp: String): Float? {
         val cleaned = resp.replace(" ", "")
         val idx = cleaned.indexOf("412F")
         if (idx >= 0 && cleaned.length >= idx + 6) {
-            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: 0
+            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: return null
             return (a * 100f) / 255f
         }
         return _telemetry.value.fuelLevelPct
@@ -269,6 +269,12 @@ class ObdManager private constructor(private val context: Context) {
         inputStream = null
         outputStream = null
         _telemetry.value = _telemetry.value.copy(
+            rpm = null,
+            speedKmh = null,
+            coolantTempC = null,
+            fuelLevelPct = null,
+            engineLoadPct = null,
+            batteryVoltage = null,
             connectionState = ObdConnectionState.DISCONNECTED,
             statusMessage = msg
         )

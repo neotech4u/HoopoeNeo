@@ -4,12 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.hoopoe.launcher.data.TripFuelRepository
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun RefuelDialog(
@@ -35,14 +38,14 @@ fun RefuelDialog(
     val isObdOnline by repo.isObdOnline.collectAsState()
     val defaultPrice by repo.fuelPricePerLiter.collectAsState()
     val currentOdo by repo.odometerKm.collectAsState()
+    val refuelList by repo.refuelList.collectAsState()
 
-    var inputLiters by remember { mutableStateOf("25.0") }
-    var odoInput by remember { mutableStateOf(currentOdo.toInt().toString()) }
+    var liters by remember { mutableDoubleStateOf(15.0) }
+    var pricePerLiter by remember { mutableDoubleStateOf(defaultPrice.toDouble()) }
+    var odoReading by remember { mutableDoubleStateOf(currentOdo ?: 48290.0) }
     var isFullTank by remember { mutableStateOf(false) }
-    var isSaved by remember { mutableStateOf(false) }
 
-    val litersVal = inputLiters.toDoubleOrNull() ?: 0.0
-    val totalCost = litersVal * defaultPrice.toDouble()
+    val totalCost = liters * pricePerLiter
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -51,336 +54,275 @@ fun RefuelDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.82f))
-                .padding(24.dp),
+                .background(Color.Black.copy(alpha = 0.85f))
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
-                    .widthIn(max = 760.dp)
+                    .widthIn(max = 720.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(Color(0xFF0F141F).copy(alpha = 0.95f))
-                    .border(1.5.dp, accent.copy(alpha = 0.45f), RoundedCornerShape(22.dp))
-                    .padding(20.dp)
+                    .fillMaxHeight(0.92f)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFF0F141F))
+                    .border(1.5.dp, accent.copy(alpha = 0.45f), RoundedCornerShape(20.dp))
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // Header Bar
+                    // Header
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Box(
                                 modifier = Modifier
-                                    .size(38.dp)
+                                    .size(36.dp)
                                     .clip(CircleShape)
                                     .background(accent.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    Icons.Default.LocalGasStation,
-                                    contentDescription = null,
-                                    tint = accent,
-                                    modifier = Modifier.size(22.dp)
-                                )
+                                Icon(Icons.Default.LocalGasStation, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
                             }
                             Column {
+                                Text("LOG PETROL REFUEL", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                                 Text(
-                                    text = "QUICK REFUEL LOG",
-                                    color = Color.White,
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp
-                                )
-                                Text(
-                                    text = if (isObdOnline) "OBD-II CANBUS SYNCED (PID 0x2F)" else "STANDALONE / MANUAL FALLBACK",
-                                    color = if (isObdOnline) accent else Color(0xFFFF9100),
+                                    if (isObdOnline) "OBD-II LIVE LINK ACTIVE" else "STANDALONE LOG (SAVED FOR HOME ASSISTANT)",
+                                    color = if (isObdOnline) accent else Color(0xFF64748B),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                         }
-
                         IconButton(
                             onClick = onDismiss,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.08f))
+                            modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.08f))
                         ) {
-                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
                         }
                     }
 
                     HorizontalDivider(color = Color(0xFF243048))
 
-                    // Split Layout: Controls & Keypad
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp)
-                    ) {
-                        // Left Column: Values & Quick Presets
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            // Liters Display Box
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(Color.Black.copy(alpha = 0.45f))
-                                    .border(1.dp, Color(0xFF243048), RoundedCornerShape(14.dp))
-                                    .padding(horizontal = 14.dp, vertical = 10.dp)
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "VOLUME ADDED",
-                                        color = Color(0xFF64748B),
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 1.sp
-                                    )
-                                    Row(
-                                        verticalAlignment = Alignment.Bottom,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(
-                                            text = if (inputLiters.isEmpty()) "0" else inputLiters,
-                                            color = accent,
-                                            fontSize = 32.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                        Text(
-                                            text = "LITERS",
-                                            color = Color(0xFF94A3B8),
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(bottom = 5.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Total Cost & Odometer Row
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
+                    // Quick Volume Chips
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("QUICK SELECT VOLUME (LITERS)", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(5.0, 10.0, 15.0, 20.0, 25.0, 30.0).forEach { preset ->
+                                val isSelected = liters == preset && !isFullTank
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.Black.copy(alpha = 0.35f))
-                                        .border(1.dp, Color(0xFF243048), RoundedCornerShape(12.dp))
-                                        .padding(10.dp)
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = "TOTAL COST",
-                                            color = Color(0xFF64748B),
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = "₹%.2f".format(totalCost),
-                                            color = Color(0xFF00E676),
-                                            fontSize = 17.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                    }
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.Black.copy(alpha = 0.35f))
-                                        .border(1.dp, Color(0xFF243048), RoundedCornerShape(12.dp))
-                                        .padding(10.dp)
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = "ODOMETER",
-                                            color = Color(0xFF64748B),
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = "$odoInput KM",
-                                            color = Color.White,
-                                            fontSize = 17.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Quick Presets
-                            Text(
-                                text = "QUICK AMOUNT PRESETS",
-                                color = Color(0xFF64748B),
-                                fontSize = 9.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                listOf("1000", "2000", "3000").forEach { amount ->
-                                    val litersCalc = "%.1f".format(amount.toDouble() / defaultPrice)
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .height(44.dp)
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(Color.White.copy(alpha = 0.05f))
-                                            .border(1.dp, Color(0xFF243048), RoundedCornerShape(10.dp))
-                                            .clickable {
-                                                TripFuelRepository.playTactileBeep()
-                                                inputLiters = litersCalc
-                                                isFullTank = false
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "₹$amount",
-                                            color = Color.White,
-                                            fontSize = 12.5.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1.1f)
-                                        .height(44.dp)
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(accent.copy(alpha = 0.15f))
-                                        .border(1.dp, accent.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                        .background(if (isSelected) accent else Color.White.copy(alpha = 0.05f))
+                                        .border(1.dp, if (isSelected) accent else Color(0xFF243048), RoundedCornerShape(10.dp))
                                         .clickable {
-                                            TripFuelRepository.playTactileBeep()
-                                            inputLiters = "42.0"
-                                            isFullTank = true
-                                        },
+                                            liters = preset
+                                            isFullTank = false
+                                        }
+                                        .padding(vertical = 10.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "FULL TANK",
-                                        color = accent,
-                                        fontSize = 11.5.sp,
-                                        fontWeight = FontWeight.ExtraBold
+                                        "${preset.toInt()}L",
+                                        color = if (isSelected) Color(0xFF07090E) else Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
                                     )
                                 }
                             }
-
-                            Spacer(Modifier.weight(1f))
-
-                            // One-Tap Save Log Action Button
-                            Button(
-                                onClick = {
-                                    if (!isSaved && litersVal > 0.0) {
-                                        isSaved = true
-                                        repo.addRefuel(
-                                            liters = litersVal,
-                                            costPerLiter = defaultPrice.toDouble(),
-                                            odometer = (odoInput.toDoubleOrNull() ?: currentOdo),
-                                            isFullTank = isFullTank
-                                        )
-                                        onDismiss()
-                                    }
-                                },
+                            // Full Tank Button
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF00E676)
-                                ),
-                                shape = RoundedCornerShape(14.dp)
+                                    .weight(1.3f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isFullTank) Color(0xFF00E676) else Color.White.copy(alpha = 0.05f))
+                                    .border(1.dp, if (isFullTank) Color(0xFF00E676) else Color(0xFF243048), RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        liters = 37.0 // Dzire 2020 tank capacity
+                                        isFullTank = true
+                                    }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = Color(0xFF07090E),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(Modifier.width(8.dp))
                                 Text(
-                                    text = if (isSaved) "SAVED ✓" else "CONFIRM & SAVE LOG",
-                                    color = Color(0xFF07090E),
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp
+                                    "FULL TANK",
+                                    color = if (isFullTank) Color(0xFF07090E) else Color(0xFF00E676),
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 11.sp
                                 )
                             }
                         }
+                    }
 
-                        // Right Column: NHTSA Ergonomic >= 64px Keypad
-                        Column(
-                            modifier = Modifier.width(280.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                    // Stepper Controls Row: Volume & Price
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        // Liters Stepper
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.Black.copy(alpha = 0.35f))
+                                .border(1.dp, Color(0xFF243048), RoundedCornerShape(12.dp))
+                                .padding(12.dp)
                         ) {
-                            val keys = listOf(
-                                listOf("1", "2", "3"),
-                                listOf("4", "5", "6"),
-                                listOf("7", "8", "9"),
-                                listOf(".", "0", "⌫")
-                            )
-
-                            keys.forEach { row ->
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("FUEL VOLUME", color = Color(0xFF64748B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    row.forEach { k ->
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .height(64.dp) // NHTSA >= 64px touch standard
-                                                .clip(RoundedCornerShape(14.dp))
-                                                .background(Color.White.copy(alpha = 0.06f))
-                                                .border(1.dp, Color(0xFF243048), RoundedCornerShape(14.dp))
-                                                .clickable {
-                                                    TripFuelRepository.playTactileBeep()
-                                                    if (k == "⌫") {
-                                                        if (inputLiters.isNotEmpty()) {
-                                                            inputLiters = inputLiters.dropLast(1)
-                                                        }
-                                                    } else if (k == ".") {
-                                                        if (!inputLiters.contains(".")) {
-                                                            inputLiters += "."
-                                                        }
-                                                    } else {
-                                                        if (inputLiters == "0" || inputLiters == "25.0") {
-                                                            inputLiters = k
-                                                        } else if (inputLiters.length < 5) {
-                                                            inputLiters += k
-                                                        }
-                                                    }
-                                                    isFullTank = false
-                                                },
-                                            contentAlignment = Alignment.Center
+                                    IconButton(
+                                        onClick = { if (liters > 1.0) liters -= 1.0 },
+                                        modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.1f))
+                                    ) {
+                                        Icon(Icons.Default.Remove, null, tint = Color.White)
+                                    }
+                                    Text(
+                                        "%.1f L".format(liters),
+                                        color = accent,
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                    IconButton(
+                                        onClick = { if (liters < 45.0) liters += 1.0 },
+                                        modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.1f))
+                                    ) {
+                                        Icon(Icons.Default.Add, null, tint = Color.White)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Price Stepper
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.Black.copy(alpha = 0.35f))
+                                .border(1.dp, Color(0xFF243048), RoundedCornerShape(12.dp))
+                                .padding(12.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("PRICE / LITER", color = Color(0xFF64748B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = { if (pricePerLiter > 10.0) pricePerLiter -= 1.0 },
+                                        modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.1f))
+                                    ) {
+                                        Icon(Icons.Default.Remove, null, tint = Color.White)
+                                    }
+                                    Text(
+                                        "₹%.2f".format(pricePerLiter),
+                                        color = Color.White,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                    IconButton(
+                                        onClick = { pricePerLiter += 1.0 },
+                                        modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.1f))
+                                    ) {
+                                        Icon(Icons.Default.Add, null, tint = Color.White)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Cost Calculation Summary Banner
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF00E676).copy(alpha = 0.10f))
+                            .border(1.dp, Color(0xFF00E676).copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("CALCULATED TOTAL COST", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "₹%.2f".format(totalCost),
+                                    color = Color(0xFF00E676),
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("ODOMETER", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text("%.0f KM".format(odoReading), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    // Primary Save Button
+                    Button(
+                        onClick = {
+                            if (liters > 0.0) {
+                                repo.addRefuel(
+                                    liters = liters,
+                                    costPerLiter = pricePerLiter,
+                                    odometer = odoReading,
+                                    isFullTank = isFullTank
+                                )
+                                onDismiss()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF07090E), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("SAVE REFUEL LOG ENTRY", color = Color(0xFF07090E), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                    }
+
+                    // Recent History Section
+                    if (refuelList.isNotEmpty()) {
+                        HorizontalDivider(color = Color(0xFF243048))
+                        Text("RECENT REFUEL HISTORY", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            refuelList.take(5).forEach { record ->
+                                val dateStr = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(Date(record.timestamp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color.White.copy(alpha = 0.03f))
+                                        .border(1.dp, Color(0xFF243048), RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text("${record.liters} L • ₹%.2f".format(record.costTotal), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Text(dateStr, color = Color(0xFF64748B), fontSize = 10.sp)
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text("%.0f KM".format(record.odometerKm), color = accent, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                                        IconButton(
+                                            onClick = { repo.deleteRefuel(record.id) },
+                                            modifier = Modifier.size(28.dp)
                                         ) {
-                                            Text(
-                                                text = k,
-                                                color = if (k == "⌫") Color(0xFFFF9100) else Color.White,
-                                                fontSize = 24.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = FontFamily.Monospace
-                                            )
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFFF5252), modifier = Modifier.size(16.dp))
                                         }
                                     }
                                 }

@@ -44,9 +44,10 @@ fun FuelHubWidget(
     val cardBorder = if (isDayMode) Color(0xFFCBD5E1) else Color(0xFF243048)
     val cardBg = if (isDayMode) Color(0xFFFFFFFF).copy(alpha = 0.9f) else Color(0xFF0F141F).copy(alpha = 0.85f)
 
-    val remainingLiters = (fuelPct / 100f) * 42.0f
-    val estRangeKm = (remainingLiters * trip.economyKmL).toInt()
-    val tripCost = (trip.distanceKm / trip.economyKmL) * fuelPrice
+    // Authentic tank calculations (Dzire 2020: 37.0 Liters capacity)
+    val remainingLiters = fuelPct?.let { (it / 100f) * 37.0f }
+    val estRangeKm = if (remainingLiters != null && trip.economyKmL > 0.0) (remainingLiters * trip.economyKmL).toInt() else null
+    val tripCost = if (trip.economyKmL > 0.0) (trip.distanceKm / trip.economyKmL) * fuelPrice else 0.0
 
     Column(
         modifier = modifier
@@ -214,7 +215,7 @@ fun FuelHubWidget(
                         Column {
                             Text("INSTANT RATE", color = contentColor.copy(alpha = 0.45f), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                text = "1.2 L/h",
+                                text = if (isObdOnline) "OBD LIVE" else "NA",
                                 color = accent,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
@@ -241,9 +242,10 @@ fun FuelHubWidget(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("PETROL TANK", color = contentColor.copy(alpha = 0.5f), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        val tankPctText = fuelPct?.let { "%.0f%%".format(it) } ?: "NA"
                         Text(
-                            text = "%.0f%%".format(fuelPct),
-                            color = if (fuelPct < 20f) Color(0xFFFF9100) else accent,
+                            text = tankPctText,
+                            color = if (fuelPct != null && fuelPct!! < 20f) Color(0xFFFF9100) else accent,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace
@@ -260,17 +262,19 @@ fun FuelHubWidget(
                             .clip(RoundedCornerShape(4.dp))
                             .background(Color.White.copy(alpha = 0.08f))
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(fraction = (fuelPct / 100f).coerceIn(0.05f, 1f))
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(accent, if (fuelPct < 20f) Color(0xFFFF9100) else Color(0xFF00E676))
+                        if (fuelPct != null) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(fraction = (fuelPct!! / 100f).coerceIn(0.05f, 1f))
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(accent, if (fuelPct!! < 20f) Color(0xFFFF9100) else Color(0xFF00E676))
+                                        )
                                     )
-                                )
-                        )
+                            )
+                        }
                     }
 
                     Spacer(Modifier.height(4.dp))
@@ -279,15 +283,17 @@ fun FuelHubWidget(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
+                        val litersStr = remainingLiters?.let { "%.1f L / 37.0 L".format(it) } ?: "NA / 37.0 L"
+                        val rangeStr = estRangeKm?.let { "EST. RANGE $it KM" } ?: "RANGE: NA"
                         Text(
-                            text = "%.1f L / 42.0 L".format(remainingLiters),
+                            text = litersStr,
                             color = contentColor.copy(alpha = 0.8f),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace
                         )
                         Text(
-                            text = "EST. RANGE $estRangeKm KM",
+                            text = rangeStr,
                             color = accent,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold

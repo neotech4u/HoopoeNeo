@@ -3,6 +3,7 @@ package com.hoopoe.launcher.ui.screen
 import android.content.res.Configuration
 import androidx.compose.animation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -176,6 +178,17 @@ fun HomeScreen(
     val speedKmh = rawSpeedVal.toInt()
     val isOverspeed = settings.overspeedWarningEnabled && speedKmh > settings.overspeedThresholdKmh
 
+    val homeContext = androidx.compose.ui.platform.LocalContext.current
+    val tripLogManager = remember { com.hoopoe.launcher.data.TripLogManager.getInstance(homeContext) }
+    LaunchedEffect(speedKmh) {
+        tripLogManager.onSpeedUpdate(speedKmh.toDouble(), 1.0)
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            tripLogManager.finishAndLogCurrentRide()
+        }
+    }
+
     val prayerTimes = remember(currentLoc, settings.prayerCalculationMethod, settings.asrMethod) {
         val lat = currentLoc?.latitude ?: 28.6139
         val lon = currentLoc?.longitude ?: 77.2090
@@ -216,73 +229,96 @@ fun HomeScreen(
                 .padding(horizontal = 14.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Vehicle Identity Pill
+            // Hoopoe Logo Emblem + Bottom MDUS OS Tech Branding
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
                     .border(1.dp, Color(0xFF243048), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 9.dp, vertical = 3.dp)
+                    .clickable { onOpenQuickControls() }
             ) {
-                Icon(
-                    imageVector = Icons.Default.DirectionsCar,
-                    contentDescription = null,
-                    tint = accent,
-                    modifier = Modifier.size(15.dp)
+                Image(
+                    painter = painterResource(com.hoopoe.launcher.R.drawable.hoopoe_logo),
+                    contentDescription = "Hoopoe Logo",
+                    modifier = Modifier.size(24.dp)
                 )
-                Text(
-                    text = "HOOPOE",
-                    color = headerTextColor,
-                    fontSize = 11.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Box(
-                    modifier = Modifier
-                        .background(accent.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
-                        .border(1.dp, accent.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 6.dp, vertical = 1.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.Center) {
                     Text(
-                        text = settings.vehicleName.uppercase(),
+                        text = "HOOPOE",
+                        color = headerTextColor,
+                        fontSize = 11.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        lineHeight = 12.sp
+                    )
+                    Text(
+                        text = "MDUS OS",
                         color = accent,
-                        fontSize = 10.sp,
+                        fontSize = 8.5.sp,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                        letterSpacing = 1.sp
+                        letterSpacing = 1.2.sp,
+                        lineHeight = 9.sp
                     )
                 }
             }
 
             Spacer(Modifier.width(10.dp))
 
-            // Drive Profile Pills: ECO | SPORT | PILOT
+            val driveMetrics = remember(speedKmh) {
+                com.hoopoe.launcher.util.DriveEfficiencyCalculator.calculate(speedKmh.toFloat())
+            }
+
+            // Dynamic Drive Profile & Real-Time CO2 Emissions Badge
             Row(
                 modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                    .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
                     .border(1.dp, Color(0xFF243048), RoundedCornerShape(16.dp))
-                    .padding(2.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                listOf("ECO", "SPORT", "PILOT").forEach { mode ->
-                    val isSelected = activeDriveMode == mode
+                listOf("ECO", "PILOT", "SPORT").forEach { modeName ->
+                    val isModeActive = driveMetrics.mode.label == modeName
+                    val badgeColor = when (modeName) {
+                        "ECO" -> Color(0xFF00E676)
+                        "PILOT" -> Color(0xFF00E5FF)
+                        else -> Color(0xFFFF1744)
+                    }
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (isSelected) accent else Color.Transparent)
-                            .clickable { activeDriveMode = mode }
-                            .padding(horizontal = 9.dp, vertical = 3.dp),
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isModeActive) badgeColor else Color.Transparent)
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = mode,
-                            color = if (isSelected) Color(0xFF07090E) else statusIconColor,
-                            fontSize = 9.5.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            text = modeName,
+                            color = if (isModeActive) Color(0xFF07090E) else statusIconColor,
+                            fontSize = 9.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
                             letterSpacing = 0.5.sp
                         )
                     }
+                }
+
+                // Dynamic CO2 Emission Readout
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color.White.copy(alpha = 0.05f))
+                        .border(0.8.dp, Color(driveMetrics.mode.badgeColorHex).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = driveMetrics.co2Display,
+                        color = Color(driveMetrics.mode.badgeColorHex),
+                        fontSize = 9.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
                 }
             }
 

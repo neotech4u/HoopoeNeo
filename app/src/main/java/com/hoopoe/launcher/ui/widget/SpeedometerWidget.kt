@@ -25,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hoopoe.launcher.data.TripFuelRepository
+import com.hoopoe.launcher.integration.obd.ObdConnectionState
+import com.hoopoe.launcher.integration.obd.ObdManager
 import com.hoopoe.launcher.util.LocationData
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.StateFlow
@@ -63,6 +65,7 @@ fun SpeedometerWidget(
     val context = LocalContext.current
     val fuelRepo = remember { TripFuelRepository.getInstance(context) }
     val fuelPct by fuelRepo.fuelPercent.collectAsState()
+    val obdTelemetry by ObdManager.getInstance(context).telemetry.collectAsStateWithLifecycle()
 
     val maxSpeed     = if (isMetric) 200f else 124f
     val rawSpeed     = ((location?.speedMps ?: 0f) * if (isMetric) 3.6f else 2.237f).coerceAtLeast(0f)
@@ -91,7 +94,67 @@ fun SpeedometerWidget(
         speedHistory = (speedHistory.drop(1) + rawSpeed)
     }
 
-    val simulatedRpm = (speedDisplay * 36f + 850f).coerceIn(850f, 6800f)
+    val metricProgress = when (metricMode) {
+        "RPM" -> {
+            val isObd = obdTelemetry.connectionState == ObdConnectionState.CONNECTED
+            val rpmVal = obdTelemetry.rpm
+            if (isObd && rpmVal != null) {
+                MetricItem(
+                    progressVal = rpmVal.toFloat(),
+                    maxVal = 7000f,
+                    displayText = "$rpmVal",
+                    displayUnit = "OBD RPM",
+                    color = if (rpmVal > 5500) Color(0xFFFF1744) else accent
+                )
+            } else {
+                MetricItem(
+                    progressVal = 0f,
+                    maxVal = 7000f,
+                    displayText = "NA",
+                    displayUnit = "RPM (NO OBD)",
+                    color = Color(0xFF64748B)
+                )
+            }
+        }
+        "PETROL" -> {
+            val isObd = obdTelemetry.connectionState == ObdConnectionState.CONNECTED
+            val obdFuel = obdTelemetry.fuelLevelPct
+            if (isObd && obdFuel != null) {
+                MetricItem(
+                    progressVal = obdFuel,
+                    maxVal = 100f,
+                    displayText = "%.0f%%".format(obdFuel),
+                    displayUnit = "OBD FUEL",
+                    color = if (obdFuel < 20f) Color(0xFFFF9100) else accent
+                )
+            } else if (fuelPct != null && fuelPct!! > 0f) {
+                MetricItem(
+                    progressVal = fuelPct!!,
+                    maxVal = 100f,
+                    displayText = "%.0f%%".format(fuelPct!!),
+                    displayUnit = "LOGGED FUEL",
+                    color = if (fuelPct!! < 20f) Color(0xFFFF9100) else accent
+                )
+            } else {
+                MetricItem(
+                    progressVal = 0f,
+                    maxVal = 100f,
+                    displayText = "NA",
+                    displayUnit = "FUEL (NO OBD)",
+                    color = Color(0xFF64748B)
+                )
+            }
+        }
+        else -> {
+            MetricItem(
+                progressVal = speedDisplay,
+                maxVal = maxSpeed,
+                displayText = "%.0f".format(speedDisplay),
+                displayUnit = unitLabel,
+                color = accent
+            )
+        }
+    }
 
     Column(
         modifier = modifier
@@ -156,11 +219,11 @@ fun SpeedometerWidget(
                 .fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
-            val (currentVal, maxVal, displayUnit, gaugeColor) = when (metricMode) {
-                "RPM" -> Quad(simulatedRpm, 7000f, "RPM", if (simulatedRpm > 5500f) Color(0xFFFF1744) else accent)
-                "PETROL" -> Quad(fuelPct, 100f, "% FUEL", if (fuelPct < 20f) Color(0xFFFF9100) else accent)
-                else -> Quad(speedDisplay, maxSpeed, unitLabel, accent)
-            }
+            val currentVal = metricProgress.progressVal
+            val maxVal = metricProgress.maxVal
+            val displayUnit = metricProgress.displayUnit
+            val gaugeColor = metricProgress.color
+            val isNa = metricProgress.displayText == "NA"
 
             if (digitalOnly) {
                 Column(
@@ -168,7 +231,7 @@ fun SpeedometerWidget(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text          = "%.0f".format(currentVal),
+                        text          = metricProgress.displayText,
                         color         = contentColor,
                         fontSize      = 54.sp,
                         fontWeight    = FontWeight.Bold,
@@ -191,7 +254,7 @@ fun SpeedometerWidget(
                     val trackW     = arcR * 0.12f
                     val startAngle = 145f
                     val sweepTotal = 250f
-                    val progressSweep = (currentVal / maxVal).coerceIn(0f, 1f) * sweepTotal
+                    val progressSweep = if (isNa) 0f else (currentVal / maxVal).coerceIn(0f, 1f) * sweepTotal
 
                     val tl = Offset(cx - arcR, cy - arcR)
                     val sz = Size(arcR * 2f, arcR * 2f)
@@ -242,9 +305,9 @@ fun SpeedometerWidget(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text          = "%.0f".format(currentVal),
+                        text          = metricProgress.displayText,
                         color         = contentColor,
-                        fontSize      = 40.sp,
+                        fontSize      = if (isNa) 36.sp else 40.sp,
                         fontWeight    = FontWeight.Bold,
                         letterSpacing = (-1.5).sp,
                         fontFamily    = FontFamily.Monospace
@@ -395,8 +458,14 @@ fun SpeedometerWidget(
                     .border(1.dp, Color(0xFF243048), RoundedCornerShape(12.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
+                val rangeStr = if (fuelPct != null && fuelPct!! > 0f) {
+                    val remainingL = (fuelPct!! / 100f) * 37.0f
+                    "RANGE ${(remainingL * 21.0f).toInt()} KM"
+                } else {
+                    "RANGE NA"
+                }
                 Text(
-                    text = "RANGE 524 KM",
+                    text = rangeStr,
                     color = accent,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
@@ -408,4 +477,10 @@ fun SpeedometerWidget(
     }
 }
 
-private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+private data class MetricItem(
+    val progressVal: Float,
+    val maxVal: Float,
+    val displayText: String,
+    val displayUnit: String,
+    val color: Color
+)

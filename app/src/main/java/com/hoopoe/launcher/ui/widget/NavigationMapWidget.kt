@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -292,6 +293,40 @@ fun NavigationMapWidget(
             }
         }
 
+        // ── 3b. Google Maps Quick-Launch Shortcut Pill ──────────────────────────
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 10.dp, end = 10.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF0F141F).copy(alpha = 0.90f))
+                .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                .clickable {
+                    view.playSoundEffect(SoundEffectConstants.CLICK)
+                    launchFullNavApp(context, currentLat, currentLon)
+                }
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Navigation,
+                    contentDescription = "Open Maps",
+                    tint = Color(0xFF00E5FF),
+                    modifier = Modifier.size(13.dp)
+                )
+                Text(
+                    text = "GOOGLE MAPS ↗",
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+            }
+        }
+
         // ── 4. Floating Tactical Automotive Controls (Right Side) ──────────────
         Column(
             modifier = Modifier
@@ -339,7 +374,7 @@ fun NavigationMapWidget(
 
             // Open Full Navigation App (↗)
             MapControlButton(
-                icon = Icons.Default.OpenInNew,
+                icon = Icons.AutoMirrored.Filled.OpenInNew,
                 contentDescription = "Open Full Navigation",
                 accent = Color(0xFF00E5FF),
                 onClick = {
@@ -392,7 +427,19 @@ private fun getHeadingDescription(bearing: Float): String {
 
 private fun launchFullNavApp(context: Context, lat: Double, lon: Double) {
     try {
-        // 1. Try launching installed OpenStreetMap apps (OsmAnd, Organic Maps) or Google Maps
+        // 1. Try launching Google Maps app directly with driving mode
+        val gmapsIntent = Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$lat,$lon&mode=d")).apply {
+            setPackage("com.google.android.apps.maps")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        if (gmapsIntent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(gmapsIntent)
+            return
+        }
+    } catch (_: Exception) {}
+
+    try {
+        // 2. Try generic geo intent (Google Maps, OsmAnd, Organic Maps, Waze)
         val geoUri = Uri.parse("geo:$lat,$lon?q=$lat,$lon(Vehicle)")
         val intent = Intent(Intent.ACTION_VIEW, geoUri).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK

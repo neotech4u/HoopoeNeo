@@ -2,13 +2,16 @@ package com.hoopoe.launcher.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.media.AudioManager
-import android.media.ToneGenerator
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class TripRecord(
     val id: String,
@@ -30,21 +33,41 @@ data class RefuelRecord(
     val costPerLiter: Double,
     val isFullTank: Boolean,
     val source: String // "AUTO_DETECTED" | "MANUAL"
-)
+) {
+    fun toJsonObject(): JSONObject {
+        return JSONObject().apply {
+            put("id", id)
+            put("timestamp", timestamp)
+            put("date_iso", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date(timestamp)))
+            put("odometer_km", odometerKm)
+            put("liters", liters)
+            put("cost_total", costTotal)
+            put("cost_per_liter", costPerLiter)
+            put("is_full_tank", isFullTank)
+            put("source", source)
+        }
+    }
+}
 
-class TripFuelRepository private constructor(context: Context) {
+class TripFuelRepository private constructor(private val context: Context) {
 
     private val prefs: SharedPreferences =
         context.applicationContext.getSharedPreferences("hoopoe_trip_fuel_store", Context.MODE_PRIVATE)
 
-    private val _isObdOnline = MutableStateFlow(prefs.getBoolean("obd_online", true))
+    private val _isObdOnline = MutableStateFlow(prefs.getBoolean("obd_online", false))
     val isObdOnline: StateFlow<Boolean> = _isObdOnline.asStateFlow()
 
-    private val _fuelPercent = MutableStateFlow(prefs.getFloat("fuel_pct", 68.0f))
-    val fuelPercent: StateFlow<Float> = _fuelPercent.asStateFlow()
+    // Nullable fuelPercent: null means no authentic data yet (render "NA")
+    private val _fuelPercent = MutableStateFlow<Float?>(
+        if (prefs.contains("fuel_pct")) prefs.getFloat("fuel_pct", 0f) else null
+    )
+    val fuelPercent: StateFlow<Float?> = _fuelPercent.asStateFlow()
 
-    private val _odometerKm = MutableStateFlow(prefs.getFloat("odometer_km", 48290.0f).toDouble())
-    val odometerKm: StateFlow<Double> = _odometerKm.asStateFlow()
+    // Nullable odometer: null means no authentic data yet (render "NA")
+    private val _odometerKm = MutableStateFlow<Double?>(
+        if (prefs.contains("odometer_km")) prefs.getFloat("odometer_km", 0f).toDouble() else null
+    )
+    val odometerKm: StateFlow<Double?> = _odometerKm.asStateFlow()
 
     private val _fuelPricePerLiter = MutableStateFlow(prefs.getFloat("fuel_price", 102.50f))
     val fuelPricePerLiter: StateFlow<Float> = _fuelPricePerLiter.asStateFlow()
@@ -55,25 +78,33 @@ class TripFuelRepository private constructor(context: Context) {
     private val _currentTrip = MutableStateFlow(
         TripRecord(
             id = "trip-active",
-            startTime = System.currentTimeMillis() - 8140000,
+            startTime = System.currentTimeMillis(),
             endTime = System.currentTimeMillis(),
-            distanceKm = 142.8,
-            avgSpeedKmh = 62.4,
-            fuelConsumedLiters = 7.76,
-            economyKmL = 18.4,
+            distanceKm = 0.0,
+            avgSpeedKmh = 0.0,
+            fuelConsumedLiters = 0.0,
+            economyKmL = 0.0,
             source = if (_isObdOnline.value) "OBD2_AUTO" else "GPS_MANUAL"
         )
     )
     val currentTrip: StateFlow<TripRecord> = _currentTrip.asStateFlow()
 
-    fun toggleObdConnection() {
-        val newVal = !_isObdOnline.value
-        _isObdOnline.value = newVal
-        prefs.edit().putBoolean("obd_online", newVal).apply()
+    fun setObdOnline(online: Boolean) {
+        _isObdOnline.value = online
+        prefs.edit().putBoolean("obd_online", online).apply()
         _currentTrip.value = _currentTrip.value.copy(
-            source = if (newVal) "OBD2_AUTO" else "GPS_MANUAL"
+            source = if (online) "OBD2_AUTO" else "GPS_MANUAL"
         )
-        playTactileBeep()
+    }
+
+    fun updateLiveObdFuel(pct: Float) {
+        _fuelPercent.value = pct
+        prefs.edit().putFloat("fuel_pct", pct).apply()
+    }
+
+    fun updateLiveOdometer(km: Double) {
+        _odometerKm.value = km
+        prefs.edit().putFloat("odometer_km", km.toFloat()).apply()
     }
 
     fun addRefuel(liters: Double, costPerLiter: Double, odometer: Double, isFullTank: Boolean) {
@@ -93,33 +124,31 @@ class TripFuelRepository private constructor(context: Context) {
         _refuelList.value = updatedList
         saveRefuels(updatedList)
 
-        // Update tank percent (42.0 Liter standard tank capacity)
-        val addedPct = (liters / 42.0 * 100.0).toFloat()
-        val newPct = if (isFullTank) 100f else (_fuelPercent.value + addedPct).coerceIn(0f, 100f)
+        // 37.0 Litre tank capacity for Dzire 2020
+        val addedPct = (liters / 37.0 * 100.0).toFloat()
+        val current = _fuelPercent.value ?: 0f
+        val newPct = if (isFullTank) 100f else (current + addedPct).coerceIn(0f, 100f)
         _fuelPercent.value = newPct
         _odometerKm.value = odometer
 
         prefs.edit()
             .putFloat("fuel_pct", newPct)
             .putFloat("odometer_km", odometer.toFloat())
+            .putFloat("fuel_price", costPerLiter.toFloat())
             .apply()
 
-        playConfirmBeep()
+        writeExternalLogs(updatedList)
+    }
+
+    fun deleteRefuel(id: String) {
+        val updatedList = _refuelList.value.filter { it.id != id }
+        _refuelList.value = updatedList
+        saveRefuels(updatedList)
+        writeExternalLogs(updatedList)
     }
 
     private fun loadRefuels(): List<RefuelRecord> {
-        val jsonStr = prefs.getString("refuels_json", null) ?: return listOf(
-            RefuelRecord(
-                id = "refuel-seed",
-                timestamp = System.currentTimeMillis() - 86400000L * 3L,
-                odometerKm = 47950.0,
-                liters = 32.5,
-                costTotal = 3331.25,
-                costPerLiter = 102.50,
-                isFullTank = true,
-                source = "AUTO_DETECTED"
-            )
-        )
+        val jsonStr = prefs.getString("refuels_json", null) ?: return emptyList()
         val list = mutableListOf<RefuelRecord>()
         try {
             val arr = JSONArray(jsonStr)
@@ -147,7 +176,7 @@ class TripFuelRepository private constructor(context: Context) {
     private fun saveRefuels(list: List<RefuelRecord>) {
         try {
             val arr = JSONArray()
-            list.take(20).forEach { item ->
+            list.take(30).forEach { item ->
                 val obj = JSONObject().apply {
                     put("id", item.id)
                     put("timestamp", item.timestamp)
@@ -166,6 +195,28 @@ class TripFuelRepository private constructor(context: Context) {
         }
     }
 
+    private fun writeExternalLogs(list: List<RefuelRecord>) {
+        try {
+            val dir = context.getExternalFilesDir(null) ?: context.filesDir
+            val jsonFile = File(dir, "fuel_log.json")
+            val arr = JSONArray()
+            list.forEach { arr.put(it.toJsonObject()) }
+            jsonFile.writeText(arr.toString(2))
+
+            val csvFile = File(dir, "fuel_log.csv")
+            val isNew = !csvFile.exists() || csvFile.length() == 0L
+            csvFile.writeText(buildString {
+                append("Id,Timestamp,DateIso,OdometerKm,Liters,CostTotal,CostPerLiter,IsFullTank,Source\n")
+                list.forEach { r ->
+                    val dateIso = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(r.timestamp))
+                    append("${r.id},${r.timestamp},\"$dateIso\",${r.odometerKm},${r.liters},${r.costTotal},${r.costPerLiter},${r.isFullTank},${r.source}\n")
+                }
+            })
+        } catch (e: Exception) {
+            Log.e("TripFuelRepository", "Error writing external fuel logs", e)
+        }
+    }
+
     companion object {
         @Volatile
         private var instance: TripFuelRepository? = null
@@ -176,11 +227,11 @@ class TripFuelRepository private constructor(context: Context) {
             }
 
         fun playTactileBeep() {
-            // Intentionally silent / no-op to prevent ToneGenerator audio server crash on automotive head units
+            // Safe no-op
         }
 
         fun playConfirmBeep() {
-            // Intentionally silent / no-op to prevent ToneGenerator audio server crash on automotive head units
+            // Safe no-op
         }
     }
 }

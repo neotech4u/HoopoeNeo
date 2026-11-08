@@ -63,15 +63,35 @@ fun VehicleInfoScreen(
     val currentSpeedKmh = ((location?.speedMps ?: 0f) * 3.6f).toInt()
     val altitudeM = location?.altitude?.toInt() ?: 0
 
+    val odoDisplay = if (odoKm != null) String.format(java.util.Locale.US, "%.1f", odoKm!!) else "NA"
+    val fuelDisplay = if (obdTelemetry.fuelLevelPct != null) {
+        String.format(java.util.Locale.US, "%.0f", obdTelemetry.fuelLevelPct!!)
+    } else if (fuelPct != null) {
+        String.format(java.util.Locale.US, "%.0f", fuelPct!!)
+    } else {
+        "NA"
+    }
+    val fuelSource = if (obdTelemetry.fuelLevelPct != null) "ECU OBD" else if (fuelPct != null) "LOGGED" else "NA"
+    val batteryDisplay = if (obdTelemetry.batteryVoltage != null && obdTelemetry.batteryVoltage!! > 0f) {
+        String.format(java.util.Locale.US, "%.1f", obdTelemetry.batteryVoltage!!)
+    } else {
+        "NA"
+    }
+    val coolantDisplay = if (obdTelemetry.coolantTempC != null && obdTelemetry.coolantTempC!! > 0) {
+        "${obdTelemetry.coolantTempC}"
+    } else {
+        "NA"
+    }
+
     val vehicleCards = listOf(
         VehicleParamCard("VEHICLE SPEED", currentSpeedKmh.toString(), "KM/H", "GPS", Icons.Default.Speed, accent),
-        VehicleParamCard("TOTAL ODOMETER", String.format(java.util.Locale.US, "%.1f", odoKm), "KM", "TRIP METER", Icons.Default.LinearScale, Color(0xFF64B5F6)),
+        VehicleParamCard("TOTAL ODOMETER", odoDisplay, "KM", if (odoKm != null) "TRIP METER" else "NA", Icons.Default.LinearScale, Color(0xFF64B5F6)),
         VehicleParamCard("TRIP DISTANCE", String.format(java.util.Locale.US, "%.1f", trip.distanceKm), "KM", "GPS", Icons.Default.Route, Color(0xFF00E676)),
         VehicleParamCard("AVERAGE SPEED", String.format(java.util.Locale.US, "%.1f", trip.avgSpeedKmh), "KM/H", "GPS", Icons.Default.Timelapse, Color(0xFFFF9100)),
-        VehicleParamCard("EST. FUEL REMAINING", String.format(java.util.Locale.US, "%.0f", fuelPct), "%", if (obdTelemetry.rpm > 0) "ECU" else "ESTIMATED", Icons.Default.LocalGasStation, Color(0xFFFFB300)),
+        VehicleParamCard("FUEL REMAINING", fuelDisplay, "%", fuelSource, Icons.Default.LocalGasStation, Color(0xFFFFB300)),
         VehicleParamCard("ALTITUDE (SEA LEVEL)", altitudeM.toString(), "METERS", "GPS NMEA", Icons.Default.Landscape, Color(0xFFB388FF)),
-        VehicleParamCard("BATTERY VOLTAGE", if (obdTelemetry.batteryVoltage > 0) String.format(java.util.Locale.US, "%.1f", obdTelemetry.batteryVoltage) else "12.6", "VOLTS", "ECU SENSOR", Icons.Default.BatteryChargingFull, Color(0xFF00E5FF)),
-        VehicleParamCard("COOLANT TEMP", if (obdTelemetry.coolantTempC > 0) "${obdTelemetry.coolantTempC}" else "—", "°C", "OBD SENSOR", Icons.Default.Thermostat, Color(0xFFFF5252))
+        VehicleParamCard("BATTERY VOLTAGE", batteryDisplay, "VOLTS", if (obdTelemetry.batteryVoltage != null) "ECU OBD" else "NA", Icons.Default.BatteryChargingFull, Color(0xFF00E5FF)),
+        VehicleParamCard("COOLANT TEMP", coolantDisplay, "°C", if (obdTelemetry.coolantTempC != null) "ECU OBD" else "NA", Icons.Default.Thermostat, Color(0xFFFF5252))
     )
 
     Column(

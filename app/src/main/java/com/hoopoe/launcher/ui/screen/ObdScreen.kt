@@ -138,7 +138,8 @@ fun ObdScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
                         Text("ENGINE RPM", color = contentColor.copy(alpha = 0.5f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        Text(if (isConnected) "${telemetry.rpm}" else "—", color = accent, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
+                        val rpmText = if (isConnected && telemetry.rpm != null) "${telemetry.rpm}" else "NA"
+                        Text(rpmText, color = accent, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
                     }
                     Text("RPM", color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
@@ -149,7 +150,8 @@ fun ObdScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
                         Text("ECU VEHICLE SPEED", color = contentColor.copy(alpha = 0.5f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        Text(if (isConnected) "${telemetry.speedKmh}" else "—", color = contentColor, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
+                        val speedText = if (isConnected && telemetry.speedKmh != null) "${telemetry.speedKmh}" else "NA"
+                        Text(speedText, color = contentColor, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
                     }
                     Text("KM/H", color = contentColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
@@ -160,11 +162,13 @@ fun ObdScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column {
                         Text("COOLANT TEMP", color = contentColor.copy(alpha = 0.5f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        Text(if (isConnected) "${telemetry.coolantTempC} °C" else "—", color = Color(0xFFFF9100), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        val coolantText = if (isConnected && telemetry.coolantTempC != null) "${telemetry.coolantTempC} °C" else "NA"
+                        Text(coolantText, color = Color(0xFFFF9100), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text("BATTERY VOLTAGE", color = contentColor.copy(alpha = 0.5f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        Text(if (isConnected) "${telemetry.batteryVoltage} V" else "—", color = Color(0xFF00E5FF), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        val batteryText = if (isConnected && telemetry.batteryVoltage != null) "${telemetry.batteryVoltage} V" else "NA"
+                        Text(batteryText, color = Color(0xFF00E5FF), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
