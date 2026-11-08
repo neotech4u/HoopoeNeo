@@ -21,6 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.provider.Settings
+import com.hoopoe.launcher.service.MediaListenerService
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +53,9 @@ fun MediaScreen(
     val contentColor = if (isDayMode) Color(0xFF0F172A) else Color(0xFFF8FAFC)
     val cardBorder = if (isDayMode) Color(0xFFCBD5E1) else Color(0xFF243048)
     val cardBg = if (isDayMode) Color(0xFFFFFFFF).copy(alpha = 0.9f) else Color(0xFF0F141F).copy(alpha = 0.85f)
+
+    val context = LocalContext.current
+    val mediaAccessEnabled by MediaListenerService.isConnected.collectAsState()
 
     var activeSourceTab by remember { mutableStateOf(if (hardwareRadio != null) "RADIO" else "NOW_PLAYING") }
 
@@ -106,20 +112,20 @@ fun MediaScreen(
                     }
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        text = hardwareRadio?.band ?: "FM1",
+                        text = hardwareRadio?.band ?: "RADIO UNAVAILABLE",
                         color = accent,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp
                     )
                     Text(
-                        text = (hardwareRadio?.freq ?: "91.1") + " MHz",
+                        text = hardwareRadio?.freq?.let { "$it MHz" } ?: "—",
                         color = contentColor,
                         fontSize = 36.sp,
                         fontWeight = FontWeight.ExtraBold
                     )
                     Text(
-                        text = hardwareRadio?.stationName ?: "STEREO LIVE TUNER",
+                        text = hardwareRadio?.stationName ?: "No compatible tuner connected",
                         color = contentColor.copy(alpha = 0.6f),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
@@ -202,12 +208,12 @@ fun MediaScreen(
             // Track Information
             Column(modifier = Modifier.fillMaxWidth()) {
                 val title = if (activeSourceTab == "RADIO") {
-                    hardwareRadio?.display ?: "FM Radio Tuner"
+                    hardwareRadio?.display ?: "Radio unavailable"
                 } else {
                     nowPlaying?.title?.ifEmpty { "Ready to Play" } ?: "Select Media Source"
                 }
                 val artist = if (activeSourceTab == "RADIO") {
-                    hardwareRadio?.stationName ?: "Broadcast Receiver"
+                    hardwareRadio?.stationName ?: "Connect a compatible radio tuner"
                 } else {
                     nowPlaying?.artist?.ifEmpty { "Bluetooth / Streaming" } ?: "Tap app shortcut to launch"
                 }
@@ -228,6 +234,27 @@ fun MediaScreen(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (activeSourceTab == "NOW_PLAYING" && nowPlaying == null) {
+                    if (!mediaAccessEnabled) {
+                        TextButton(
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.NotificationsActive, null, tint = accent)
+                            Spacer(Modifier.width(6.dp))
+                            Text("ENABLE MEDIA ACCESS", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Text(
+                            "Start playback in a media app to connect its controls.",
+                            color = contentColor.copy(alpha = 0.55f),
+                            fontSize = 11.sp
+                        )
+                    }
+                }
             }
 
             // Tactile 64dp+ Master In-Car Transport Controls
@@ -241,6 +268,7 @@ fun MediaScreen(
                 // Prev
                 IconButton(
                     onClick = { if (activeSourceTab == "RADIO") onRadioSeekDown() else onPrev() },
+                    enabled = if (activeSourceTab == "RADIO") hardwareRadio != null else nowPlaying != null,
                     modifier = Modifier.size(56.dp)
                 ) {
                     Icon(Icons.Default.SkipPrevious, "Previous", tint = contentColor, modifier = Modifier.size(34.dp))
@@ -254,7 +282,7 @@ fun MediaScreen(
                         .size(72.dp)
                         .clip(CircleShape)
                         .background(accent)
-                        .clickable { onPlayPause() },
+                        .clickable(enabled = if (activeSourceTab == "RADIO") hardwareRadio != null else nowPlaying != null) { onPlayPause() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -270,6 +298,7 @@ fun MediaScreen(
                 // Next
                 IconButton(
                     onClick = { if (activeSourceTab == "RADIO") onRadioSeekUp() else onNext() },
+                    enabled = if (activeSourceTab == "RADIO") hardwareRadio != null else nowPlaying != null,
                     modifier = Modifier.size(56.dp)
                 ) {
                     Icon(Icons.Default.SkipNext, "Next", tint = contentColor, modifier = Modifier.size(34.dp))
@@ -289,7 +318,7 @@ fun MediaScreen(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(cardBg)
                                 .border(1.dp, cardBorder, RoundedCornerShape(10.dp))
-                                .clickable {
+                                .clickable(enabled = hardwareRadio != null) {
                                     if (band == "AM") onRadioSwitchAm() else onRadioCycleFm()
                                 }
                                 .padding(vertical = 8.dp),

@@ -825,7 +825,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
         }
 
-        // Live trip tracking & in-dash navigation route updates
+        // Live trip tracking
         viewModelScope.launch {
             locationMgr.location.filterNotNull().collect { loc ->
                 val fuelType = com.hoopoe.launcher.util.FuelType.fromCode(settings.value.fuelType)
@@ -837,7 +837,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     fuelType = fuelType,
                     mileage = mileage
                 )
-                com.hoopoe.launcher.data.NavigationManager.getInstance(getApplication()).onLocationUpdate(loc.latitude, loc.longitude)
             }
         }
     }

@@ -82,10 +82,22 @@ class ObdManager private constructor(private val context: Context) {
                 )
 
                 val pairedDevices = btAdapter.bondedDevices
-                val obdCandidate: BluetoothDevice? = pairedDevices?.firstOrNull { device ->
-                    val name = device.name?.lowercase() ?: ""
-                    name.contains("obd") || name.contains("elm") || name.contains("vgate") || name.contains("car")
-                }
+                // Avoid generic "car kit" names that often belong to the head unit or a phone.
+                // Explicit adapter selection can replace this heuristic in a later UI flow.
+                val obdCandidate: BluetoothDevice? = pairedDevices
+                    ?.sortedBy { device ->
+                        val name = device.name.orEmpty().lowercase()
+                        when {
+                            name.contains("vgate") -> 0
+                            name.contains("obd") -> 1
+                            name.contains("elm") -> 2
+                            else -> 3
+                        }
+                    }
+                    ?.firstOrNull { device ->
+                        val name = device.name?.lowercase().orEmpty()
+                        name.contains("obd") || name.contains("elm") || name.contains("vgate")
+                    }
 
                 if (obdCandidate == null) {
                     _telemetry.value = _telemetry.value.copy(
@@ -154,7 +166,7 @@ class ObdManager private constructor(private val context: Context) {
 
                     // Query Battery Voltage (ATRV)
                     val voltRaw = sendCommand("ATRV")
-                    val volts = voltRaw.replace("[^0-9.]".toRegex(), "").toFloatOrNull() ?: 12.6f
+                    val volts = voltRaw.replace("[^0-9.]".toRegex(), "").toFloatOrNull()?.takeIf { it in 5f..20f }
 
                     _telemetry.value = _telemetry.value.copy(
                         rpm = rpm,
@@ -205,7 +217,7 @@ class ObdManager private constructor(private val context: Context) {
             val b = cleaned.substring(idx + 6, idx + 8).toIntOrNull(16) ?: return null
             return ((a * 256) + b) / 4
         }
-        return _telemetry.value.rpm
+        return null
     }
 
     private fun parseSpeed(resp: String): Int? {
@@ -214,7 +226,7 @@ class ObdManager private constructor(private val context: Context) {
         if (idx >= 0 && cleaned.length >= idx + 6) {
             return cleaned.substring(idx + 4, idx + 6).toIntOrNull(16)
         }
-        return _telemetry.value.speedKmh
+        return null
     }
 
     private fun parseCoolant(resp: String): Int? {
@@ -224,7 +236,7 @@ class ObdManager private constructor(private val context: Context) {
             val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: return null
             return a - 40
         }
-        return _telemetry.value.coolantTempC
+        return null
     }
 
     private fun parseFuel(resp: String): Float? {
@@ -234,7 +246,7 @@ class ObdManager private constructor(private val context: Context) {
             val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: return null
             return (a * 100f) / 255f
         }
-        return _telemetry.value.fuelLevelPct
+        return null
     }
 
     fun requestDtcCodes() {

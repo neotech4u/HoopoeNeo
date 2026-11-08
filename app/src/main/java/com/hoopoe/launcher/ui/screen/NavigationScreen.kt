@@ -25,9 +25,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import com.hoopoe.launcher.data.AppSettings
+import com.hoopoe.launcher.data.ExternalNavigation
 import com.hoopoe.launcher.model.AppInfo
-import com.hoopoe.launcher.data.NavigationManager
 import com.hoopoe.launcher.ui.widget.NavigationMapWidget
 import com.hoopoe.launcher.util.LocationData
 import kotlinx.coroutines.flow.StateFlow
@@ -51,10 +52,7 @@ fun NavigationScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val navManager = remember { NavigationManager.getInstance(context) }
     val location by locationFlow.collectAsState()
-    val curLat = location?.latitude ?: 28.6139
-    val curLon = location?.longitude ?: 77.2090
 
     var searchQuery by remember { mutableStateOf("") }
 
@@ -72,8 +70,25 @@ fun NavigationScreen(
     )
 
     fun routeToTarget(query: String) {
-        val target = navManager.selectPoiDestination(query, curLat, curLon)
-        navManager.setDestination(target, curLat, curLon)
+        val destination = when (query.trim().uppercase()) {
+            "PETROL", "GAS", "FUEL" -> "petrol station"
+            "MOSQUE", "MASJID" -> "mosque"
+            "HOSPITAL" -> "hospital"
+            "RESTAURANT", "FOOD" -> "restaurant"
+            else -> query.trim()
+        }
+        if (destination.equals("HOME", ignoreCase = true) || destination.equals("WORK", ignoreCase = true)) {
+            Toast.makeText(context, "Set your home or work address in Settings first.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val origin = location?.takeIf { it.latitude != 0.0 && it.longitude != 0.0 }
+        val opened = ExternalNavigation.openDrivingDirections(
+            context = context,
+            destination = destination,
+            originLatitude = origin?.latitude,
+            originLongitude = origin?.longitude
+        )
+        if (!opened) Toast.makeText(context, "No navigation app could open this destination.", Toast.LENGTH_LONG).show()
     }
 
     fun launchNavIntent(query: String) {

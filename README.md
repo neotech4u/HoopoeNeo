@@ -1,13 +1,13 @@
 <div align="center">
   <img width="200" height="200" alt="Hoopoe Automotive Companion Logo" src="./hoopoe_logo.png" />
   <h1>HOOPOE — Smart Automotive Companion</h1>
-  <p><strong>A premium, standalone automotive infotainment cockpit and companion application engineered for aftermarket Android head units.</strong></p>
+  <p><strong>A standalone automotive cockpit prototype for aftermarket Android head units. Hardware integrations vary by device and adapter.</strong></p>
 
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
   [![Platform: Android](https://img.shields.io/badge/Platform-Android%2010%2B%20%28API%2029%2B%29-green.svg)](https://developer.android.com)
   [![UI: Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-purple.svg)](https://developer.android.com/jetpack/compose)
   [![Architecture: Standalone App](https://img.shields.io/badge/Architecture-Standalone%20Companion-gold.svg)](#-standalone-companion-architecture)
-  [![Optimized for 2GB RAM](https://img.shields.io/badge/RAM-2GB%20Optimized-orange.svg)](#-optimizations-for-2-gb-ram--aftermarket-socs)
+  [![Target profile: 2GB RAM](https://img.shields.io/badge/Target%20profile-2GB%20RAM-orange.svg)](#-hardware--vehicle-compatibility)
 </div>
 
 ---
@@ -57,10 +57,10 @@ HOOPOE now operates as a **Standalone Automotive Companion Application**. It del
 - **3 Layout Presets:** Standard Cockpit (RHD), Minimal Focus HUD, and Tri-Pane Telemetry.
 
 ### 🗺️ Module 2: Navigation Centre
-- **1-Touch Destination Routing:** Instant search and navigation intents to Google Maps, OsmAnd, or Organic Maps.
+- **1-Touch Destination Routing:** Destination searches and petrol, mosque, hospital, and restaurant shortcuts open driving directions in Google Maps or a compatible browser.
 - **Quick POIs:** One-tap routes to nearby Petrol Stations, Mosques, Hospitals, and Restaurants.
 - **Home & Work Shortcuts:** Direct commuting routes configured in preferences.
-- **Embedded Map View:** Interactive OpenStreetMap canvas for live visual situational awareness.
+- **Embedded Map View:** OpenStreetMap canvas follows the live vehicle location. Destination searches hand off driving directions to Google Maps; HOOPOE does not calculate turn-by-turn routes.
 
 ### 🎵 Module 3: Media Centre
 - **Universal Playback Controls:** Tactile 48dp+ buttons for Play/Pause, Next Track, Previous Track, and Progress Scrubbing.
@@ -69,8 +69,8 @@ HOOPOE now operates as a **Standalone Automotive Companion Application**. It del
 
 ### 🔧 Module 4: Vehicle Information & Diagnostics
 - **GPS vs. ECU Data:** Strictly isolates GPS-derived telemetry (speed, heading, altitude) from authentic vehicle ECU data.
-- **Bluetooth OBD-II (ELM327):** Real SPP RFCOMM engine querying RPM, coolant temperature, throttle position, and battery voltage, with a DTC trouble-code scanner.
-- **TPMS 4-Wheel Monitor:** Visualizes real-time tyre pressure (PSI) and temperature (°C) with warning thresholds.
+- **Bluetooth OBD-II (ELM327):** SPP RFCOMM integration for RPM, speed, coolant temperature, fuel level, battery voltage, and DTC reads; supported values depend on the adapter and vehicle.
+- **TPMS screen:** Provides a four-wheel layout. Live sensor readings and calibration are not implemented; values remain unavailable until a compatible receiver integration is added.
 
 ### 🕌 Module 5: Islamic Travel Companion
 - **Offline Astronomical Prayer Timings:** Computes Fajr, Dhuhr, Asr, Maghrib, and Isha using Meeus solar algorithms without internet connectivity.
@@ -115,7 +115,7 @@ HOOPOE now operates as a **Standalone Automotive Companion Application**. It del
 | **Primary Target Head Unit** | JGL Aftermarket Android Head Unit |
 | **SoC / Chipset** | Allwinner / Rockchip / MediaTek / UIS7862 |
 | **Reported OS Version** | Android 15 (API 35/36 compatible) |
-| **RAM Footprint** | Optimized for 2 GB RAM (runs comfortably under 120 MB PSS) |
+| **RAM Footprint** | 2 GB is a target profile; this repository does not include a measured PSS benchmark |
 | **Storage** | 128 GB Internal Storage |
 | **Factory Integrations** | 360° Reverse Camera, Bluetooth Handsfree/A2DP, GPS antenna |
 | **Root Required?** | **No** (Standard standalone APK) |

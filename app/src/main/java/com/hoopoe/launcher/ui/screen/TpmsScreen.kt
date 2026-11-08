@@ -60,34 +60,12 @@ fun TpmsScreen(
                 Text("TYRE PRESSURE MONITORING SYSTEM (TPMS)", color = contentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = { TpmsManager.calibrateSensors() },
-                    colors = ButtonDefaults.buttonColors(containerColor = accent.copy(alpha = 0.15f)),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("CALIBRATE", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-
-                Button(
-                    onClick = { TpmsManager.toggleHardwareConnection() },
-                    colors = ButtonDefaults.buttonColors(containerColor = if (tpmsState.isHardwareConnected) Color(0xFF00E676) else accent),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(
-                        text = if (tpmsState.isHardwareConnected) "RECEIVER SYNCED" else "SYNC RECEIVER",
-                        color = if (tpmsState.isHardwareConnected) Color(0xFF07090E) else Color(0xFF07090E),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
         }
 
         // Status banner
         Text(
             text = tpmsState.statusSummary,
-            color = if (tpmsState.isHardwareConnected) Color(0xFF00E676) else Color(0xFFFF9100),
+            color = Color(0xFFFF9100),
             fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold
         )
@@ -170,13 +148,13 @@ private fun TyreCard(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(if (tyre.isAlert) Color(0xFFFF1744) else Color(0xFF00E676))
+                        .background(if (tyre.isAlert) Color(0xFFFF1744) else Color(0xFF64748B))
                 )
             }
 
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = String.format(java.util.Locale.US, "%.1f", tyre.pressurePsi),
+                    text = tyre.pressurePsi?.let { String.format(java.util.Locale.US, "%.1f", it) } ?: "—",
                     color = contentColor,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
@@ -184,7 +162,7 @@ private fun TyreCard(
                 )
                 Text("PSI", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 3.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("${tyre.temperatureC} °C", color = contentColor.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(bottom = 3.dp))
+                Text(tyre.temperatureC?.let { "$it °C" } ?: "— °C", color = contentColor.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(bottom = 3.dp))
             }
         }
     }
