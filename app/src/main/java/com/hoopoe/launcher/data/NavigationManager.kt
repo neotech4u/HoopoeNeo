@@ -18,8 +18,8 @@ data class NavDestinationTarget(
 
 /**
  * Shared in-cockpit Navigation Manager:
- * Manages active destination targets, live polyline routing, distance-to-go, and ETA.
- * Ensures the in-dash OpenStreetMap widget renders real routes and destinations internally.
+ * Manages destinations, straight-line distance estimates, and estimated ETA.
+ * The generated map line is illustrative; it does not follow roads or provide turn guidance.
  */
 class NavigationManager private constructor(private val context: Context) {
 
@@ -69,11 +69,11 @@ class NavigationManager private constructor(private val context: Context) {
         val distKm = (results[0] / 1000.0)
         _distanceRemainingKm.value = distKm
 
-        // Average city/suburban automotive speed ~35 km/h
+        // Rough estimate only; this is not road-network routing or traffic-aware ETA.
         val etaMins = maxOf(1, ((distKm / 35.0) * 60).roundToInt())
         _etaMinutes.value = etaMins
 
-        // Generate route polyline points between vehicle and destination
+        // Generate a visual connector; this is not a navigable road route.
         val steps = 10
         val points = mutableListOf<GeoPoint>()
         for (i in 0..steps) {
