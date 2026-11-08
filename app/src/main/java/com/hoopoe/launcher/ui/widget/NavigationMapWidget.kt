@@ -222,7 +222,7 @@ fun NavigationMapWidget(
             Box(
                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
                     .background(Color(0xFF0F141F).copy(alpha = 0.92f))
-                    .clickable { launchFullNavApp(context, currentLat, currentLon) }
+                    .clickable { openMapAtLocation(context, currentLat, currentLon) }
                     .padding(horizontal = 9.dp, vertical = 6.dp)
             ) {
                 Text("OPEN MAPS ↗", color = Color(0xFF00E5FF), fontSize = 9.sp, fontWeight = FontWeight.Bold)
@@ -282,7 +282,6 @@ fun NavigationMapWidget(
                     }
                 }
             }
-        }
 
         // ── 5. Floating Tactical Automotive Controls (Right Side) ──────────────
         Column(
@@ -371,30 +370,16 @@ private fun getHeadingDescription(bearing: Float): String {
     }
 }
 
-private fun launchFullNavApp(context: Context, lat: Double, lon: Double) {
-    try {
-        val gmapsIntent = Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$lat,$lon&mode=d")).apply {
-            setPackage("com.google.android.apps.maps")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        if (gmapsIntent.resolveActivity(context.packageManager) != null) {
-            context.startActivity(gmapsIntent)
-            return
-        }
-    } catch (_: Exception) {}
-
-    try {
-        val geoUri = Uri.parse("geo:$lat,$lon?q=$lat,$lon(Destination)")
-        val intent = Intent(Intent.ACTION_VIEW, geoUri).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        context.startActivity(intent)
-    } catch (_: Exception) {
-        try {
-            val fallback = Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com/?q=$lat,$lon")).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(fallback)
-        } catch (_: Exception) {}
+private fun openMapAtLocation(context: Context, lat: Double, lon: Double) {
+    val uri = Uri.parse("https://www.google.com/maps/@").buildUpon()
+        .appendQueryParameter("api", "1")
+        .appendQueryParameter("map_action", "map")
+        .appendQueryParameter("center", "$lat,$lon")
+        .appendQueryParameter("zoom", "16")
+        .build()
+    runCatching {
+        context.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }.onFailure {
+        Toast.makeText(context, "No map app could open the current location.", Toast.LENGTH_LONG).show()
     }
 }
